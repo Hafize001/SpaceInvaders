@@ -2,3 +2,4 @@
 *.o
 .vscode/ipch/
 .vscode/browse.vc.db
+.vscode/
