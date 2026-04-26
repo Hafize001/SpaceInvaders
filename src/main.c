@@ -8,7 +8,7 @@ const int screen_height = 600;
 
 
 int main() {
-    InitWindow(800, 600, "Space Invaders Game");
+    InitWindow(screen_width, screen_height, "Space Invaders Game");
     SetTargetFPS(60);
 
     bool paused = false;
