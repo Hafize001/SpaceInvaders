@@ -33,6 +33,8 @@ int main() {
 
         BeginDrawing();
             ClearBackground(BLACK); 
+            //durdurunca gemi resmi gidiyordu yukarı aldım
+            DrawPlayer(&gemi); 
 
             if (paused) {
                 const char* pause_text = "PAUSED";
@@ -45,11 +47,7 @@ int main() {
                 int text_width = MeasureText(over_text, 40);
                 DrawText(over_text, (SCREEN_WIDTH - text_width) / 2, SCREEN_HEIGHT / 2, 40, RED);
             } 
-            else {
-                // --- GEMİ ÇİZİMİ ---
-                DrawPlayer(&gemi); 
-                // -------------------
-            }   
+               
         EndDrawing(); 
     } // While döngüsünün sonu
 
