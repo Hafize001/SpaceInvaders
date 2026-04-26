@@ -30,7 +30,7 @@ int main() {
             UpdatePlayer(&gemi); 
             // ------------------------
         }
-
+ 
         BeginDrawing();
             ClearBackground(BLACK); 
             //durdurunca gemi resmi gidiyordu yukarı aldım
