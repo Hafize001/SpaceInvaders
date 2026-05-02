@@ -45,6 +45,24 @@ int main() {
 
             // Merminin hareketini güncelle
             UpdateBullet(&mermi, dt);
+            // --- ÇARPIŞMA KONTROLÜ (MERMİ DÜŞMANI VURDU MU?) ---
+            if (mermi.active) {
+                for (int i = 0; i < ENEMY_ROWS; i++) {
+                    for (int j = 0; j < ENEMY_COLS; j++) {
+                        // Eğer düşman hayattaysa ve mermiyle temas ediyorsa
+                        if (ordumuz[i][j].active && CheckCollisionRecs(
+                            (Rectangle){ mermi.position.x, mermi.position.y, 5, 15 }, 
+                            (Rectangle){ ordumuz[i][j].position.x, ordumuz[i][j].position.y, ordumuz[i][j].size.x, ordumuz[i][j].size.y })) 
+                        {
+                            ordumuz[i][j].active = false; // Düşman patladı!
+                            mermi.active = false;        // Mermi yok oldu!
+                            break; // Bir mermiyle sadece bir düşman vurulsun
+                        }
+                    }
+                }
+            }
+
+             // --- OYUN BİTİŞ KONTROLÜ ---         
         }
  
         BeginDrawing();
