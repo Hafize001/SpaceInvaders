@@ -20,6 +20,7 @@ int main() {
     Bullet mermi;       // Mermi objesini oluşturduk
     InitBullet(&mermi); // Mermiyi başlangıç durumuna getirdik
 
+    int score = 0;      // Skor değişkeni eklendi
     bool paused = false;    
     bool game_over = false; 
 
@@ -40,11 +41,12 @@ int main() {
             if (IsKeyPressed(KEY_SPACE) && !mermi.active) {
                 mermi.active = true;
                 // Mermiyi tam geminin ortasından başlatıyoruz
-                mermi.position = (Vector2){ gemi.position.x + 20, gemi.position.y };
+                mermi.position = (Vector2){ gemi.position.x + 17, gemi.position.y };
             }
 
             // Merminin hareketini güncelle
             UpdateBullet(&mermi, dt);
+
             // --- ÇARPIŞMA KONTROLÜ (MERMİ DÜŞMANI VURDU MU?) ---
             if (mermi.active) {
                 for (int i = 0; i < ENEMY_ROWS; i++) {
@@ -56,15 +58,23 @@ int main() {
                         {
                             ordumuz[i][j].active = false; // Düşman patladı!
                             mermi.active = false;        // Mermi yok oldu!
+                            score += 100;                // Skoru artır
                             break; // Bir mermiyle sadece bir düşman vurulsun
                         }
                     }
                 }
             }
 
-             // --- OYUN BİTİŞ KONTROLÜ ---         
+            // --- OYUN BİTİŞ KONTROLÜ ---
+            for (int i = 0; i < ENEMY_ROWS; i++) {
+                for (int j = 0; j < ENEMY_COLS; j++) {
+                    if (ordumuz[i][j].active && ordumuz[i][j].position.y + ordumuz[i][j].size.y >= gemi.position.y) {
+                        game_over = true;
+                    }
+                }
+            }
         }
- 
+
         BeginDrawing();
             ClearBackground(BLACK); 
             
@@ -72,6 +82,9 @@ int main() {
             DrawPlayer(&gemi); 
             DrawEnemies(ordumuz);
             DrawBullet(&mermi); // Mermiyi ekrana çiz
+
+            // Skoru ekrana yazdır
+            DrawText(TextFormat("SCORE: %05d", score), 20, 20, 20, RAYWHITE);
 
             if (paused) {
                 const char* pause_text = "PAUSED";
