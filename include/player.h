@@ -8,7 +8,7 @@ typedef struct Player {
     Vector2 position;
     Vector2 speed;
     int lives;
-    Texture2D texture; // İleride resim eklemek için hazır tutuyoruz
+    Texture2D gameShip;
 } Player;
 
 // Fonksiyon tanımları (Prototipler)
