@@ -2,36 +2,51 @@
 #include <stdio.h>
 #include "player.h" 
 #include "common.h"
-#include "enemy.h"
-#include "bullet.h" // Mermi modülünü dahil ettik
-#include "gamestate.h" // Oyun durum modülünü dahil ettik
+#include "enemy.h"   // GÜNCELLENİCEK
+#include "bullet.h"  // GÜNCELLENİCEK
+#include "gamestate.h" 
+#include "ui.h" 
 
 int main() {
     
+    // Ekran boyutunu 1920x1080 olarak sabitledim(monitorde yansitmak icin)
     InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Space Invaders Game");
+
+    ToggleFullscreen(); 
+
     SetTargetFPS(60);
 
+    // --- GÖRSELLERİ (TEXTURE) HAFIZAYA YÜKLE ---
+    Texture2D spriteSheet = LoadTexture("../assets/pico8_invaders_sprites_LARGE.png");
+    Texture2D heartIcon = LoadTexture("../assets/Heart_Pump.png");
+    Texture2D background_1 = LoadTexture("../assets/Space_01-Sheet.png");
+    Texture2D background_2 = LoadTexture("../assets/Space_02-Sheet.png");
+    
     // --- HAZIRLIKLAR ---
     Player gemi;       
     InitPlayer(&gemi);  
     
-    Enemy ordumuz[ENEMY_ROWS][ENEMY_COLS];
-    InitEnemies(ordumuz);
+    Enemy ordumuz[ENEMY_ROWS][ENEMY_COLS];  // ŞİMDİLİK 
+    InitEnemies(ordumuz);                   // ŞİMDİLİK 
 
-    Bullet mermi;       // Mermi objesini oluşturduk
-    InitBullet(&mermi); // Mermiyi başlangıç durumuna getirdik
+    Bullet mermi;                           // ŞİMDİLİK 
+    InitBullet(&mermi);                     // ŞİMDİLİK 
 
-    int score = 0;      // Skor değişkeni eklendi
+    int score = 0;  
+    int highest_score = 0;    
+    int currentLevel = 1; // Level sistemi 
+    int lives = 3;        // Can sistemi 
+
     bool paused = false;    
     bool game_over = false; 
-    bool victory = false;   // Zafer durumu eklendi
+    bool victory = false;   
 
     int menuSelection = 0; 
     GameScreen currentScreen = SCREEN_MENU; 
 
     while (!WindowShouldClose()) {
 
-        // --- EKRAN YÖNETİMİ (UPDATE) ---
+         // --- EKRAN YÖNETİMİ ---
         switch (currentScreen) {
             case SCREEN_MENU:
                 if (IsKeyPressed(KEY_ENTER)) {
@@ -144,11 +159,12 @@ int main() {
                 break;
         }
 
+
+        // --- ÇİZİM AŞAMASI (DRAW) ---
         BeginDrawing();
-            ClearBackground(BLACK); 
+            ClearBackground((Color){ 10, 10, 25, 255 }); 
             
             if (currentScreen == SCREEN_MENU) {
-                // --- ANA MENÜ ÇİZİMİ ---
                 DrawRectangleGradientV(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, (Color){10, 10, 25, 255}, BLACK);
                 DrawLineEx((Vector2){0, 150}, (Vector2){SCREEN_WIDTH, 150}, 2, MAGENTA);
                 DrawLineEx((Vector2){0, SCREEN_HEIGHT - 100}, (Vector2){SCREEN_WIDTH, SCREEN_HEIGHT - 100}, 2, MAGENTA);
@@ -165,14 +181,16 @@ int main() {
                 DrawText("PRESS [Q] TO EXIT", 20, SCREEN_HEIGHT - 30, 15, DARKGRAY);
             }
             else if (currentScreen == SCREEN_GAMEPLAY) {
-                // Çizimler (Duraklatılsa bile görünürler)
+                
+                // --- 1. ARAYÜZ (UI) ÇİZİMLERİ (Senin Figma Tasarımın) ---
+                DrawGameplayUI(score, currentLevel, highest_score, lives, heartIcon);
+                DrawBackground(background_1);
+                // --- 2. OYUN ALANI ÇİZİMLERİ ---
                 DrawPlayer(&gemi); 
                 DrawEnemies(ordumuz);
                 DrawBullet(&mermi); 
 
-                // Skoru ekrana yazdır
-                DrawText(TextFormat("SCORE: %05d", score), 20, 20, 20, RAYWHITE);
-
+                // Pause ve Game Over ekranları...
                 if (paused) {
                     DrawRectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, (Color){ 0, 0, 0, 200 });
                     Rectangle menuBox = { SCREEN_WIDTH/2 - 125, SCREEN_HEIGHT/2 - 100, 250, 200 };
@@ -185,8 +203,7 @@ int main() {
                     DrawText(menuSelection == 0 ? "> RESUME" : "  RESUME", SCREEN_WIDTH/2 - 60, SCREEN_HEIGHT/2 - 20, 20, menuSelection == 0 ? LIME : GRAY);
                     DrawText(menuSelection == 1 ? "> RESTART (R)" : "  RESTART (R)", SCREEN_WIDTH/2 - 60, SCREEN_HEIGHT/2 + 20, 20, menuSelection == 1 ? LIME : GRAY);
                     DrawText(menuSelection == 2 ? "> MAIN MENU (M)" : "  MAIN MENU (M)", SCREEN_WIDTH/2 - 60, SCREEN_HEIGHT/2 + 60, 20, menuSelection == 2 ? LIME : GRAY);
-                } 
-                else if (game_over) {
+                }else if (game_over) {
                     DrawRectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, (Color){ 0, 0, 0, 150 });
                     const char* over_text = "GAME OVER";
                     DrawText(over_text, (SCREEN_WIDTH - MeasureText(over_text, 40)) / 2, SCREEN_HEIGHT / 2 - 20, 40, RED);
@@ -197,12 +214,17 @@ int main() {
                     const char* win_text = "VICTORY!";
                     DrawText(win_text, (SCREEN_WIDTH - MeasureText(win_text, 40)) / 2, SCREEN_HEIGHT / 2 - 20, 40, LIME);
                     DrawText("Press R to Play Again or M for Menu", SCREEN_WIDTH/2 - 150, SCREEN_HEIGHT/2 + 40, 20, RAYWHITE);
-                }
+                } 
             }
                 
         EndDrawing(); 
-    } // While döngüsünün sonu
+    } 
+
+    // --- TEMİZLİK (Ayrılmadan Önce Hafızayı Boşalt) ---
+    UnloadTexture(gemi.gameShip);
+    UnloadTexture(heartIcon);
+    UnloadTexture(background_1);
 
     CloseWindow();
     return 0;
-} // Main fonksiyonunun sonu
+}
