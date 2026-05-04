@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include "player.h" 
 #include "common.h"
-#include "enemy.h"   // GÜNCELLENİCEK
+#include "enemy.h"   
 #include "bullet.h"  // GÜNCELLENİCEK
 #include "gamestate.h" 
 #include "ui.h" 
@@ -16,22 +16,15 @@ int main() {
 
     SetTargetFPS(60);
 
-    // --- GÖRSELLERİ (TEXTURE) HAFIZAYA YÜKLE ---
-    Texture2D spriteSheet = LoadTexture("../assets/pico8_invaders_sprites_LARGE.png");
+    // --- GÖRSELLERİ HAFIZAYA YÜKLE ---
+    Image spriteSheet = LoadImage("../assets/pico8_invaders_sprites_LARGE.png"); 
+    ImageColorReplace(&spriteSheet, BLACK, BLANK); 
+    Texture2D enemySpriteSheet = LoadTextureFromImage(spriteSheet); 
+    UnloadImage(spriteSheet); 
     Texture2D heartIcon = LoadTexture("../assets/Heart_Pump.png");
     Texture2D background_1 = LoadTexture("../assets/Space_01-Sheet.png");
     Texture2D background_2 = LoadTexture("../assets/Space_02-Sheet.png");
     
-    // --- HAZIRLIKLAR ---
-    Player gemi;       
-    InitPlayer(&gemi);  
-    
-    Enemy ordumuz[ENEMY_ROWS][ENEMY_COLS];  // ŞİMDİLİK 
-    InitEnemies(ordumuz);                   // ŞİMDİLİK 
-
-    Bullet mermi;                           // ŞİMDİLİK 
-    InitBullet(&mermi);                     // ŞİMDİLİK 
-
     int score = 0;  
     int highest_score = 0;    
     int currentLevel = 1; // Level sistemi 
@@ -41,8 +34,27 @@ int main() {
     bool game_over = false; 
     bool victory = false;   
 
+    // Animasyon için zamanlayıcı ve anlık kare (0 veya 1)
+    float animTimer = 0.0f;
+    int currentFrame = 0;
+
     int menuSelection = 0; 
     GameScreen currentScreen = SCREEN_MENU; 
+    
+    // --- HAZIRLIKLAR ---
+    Player gemi;       
+    InitPlayer(&gemi);  
+    
+    Enemy ordumuz[ENEMY_ROWS][ENEMY_COLS];
+    InitEnemies(ordumuz,currentLevel);  
+    
+    Ufo ufo;
+    InitUfo(&ufo);
+
+    Bullet mermi;                           // ŞİMDİLİK 
+    InitBullet(&mermi);                     // ŞİMDİLİK 
+
+    
 
     while (!WindowShouldClose()) {
 
@@ -72,7 +84,7 @@ int main() {
                     // Hızlı Tuşlar
                     if (IsKeyPressed(KEY_R)) { // R tuşu ile direkt restart
                         InitPlayer(&gemi);
-                        InitEnemies(ordumuz);
+                        InitEnemies(ordumuz, currentLevel);
                         InitBullet(&mermi);
                         score = 0;
                         game_over = false;
@@ -92,7 +104,7 @@ int main() {
                         if (menuSelection == 0) paused = false;
                         else if (menuSelection == 1) {
                             InitPlayer(&gemi);
-                            InitEnemies(ordumuz);
+                            InitEnemies(ordumuz, currentLevel);
                             InitBullet(&mermi);
                             score = 0;
                             game_over = false;
@@ -110,7 +122,8 @@ int main() {
                     float dt = GetFrameTime(); 
                     
                     UpdatePlayer(&gemi); 
-                    UpdateEnemies(ordumuz, dt, SCREEN_WIDTH);
+                    UpdateEnemies(ordumuz, &animTimer, &currentFrame);
+                    UpdateUfo(&ufo,GetFrameTime());
 
                     // --- ATEŞ ETME KONTROLÜ ---
                     if (IsKeyPressed(KEY_SPACE) && !mermi.active) {
@@ -159,8 +172,6 @@ int main() {
                 break;
         }
 
-
-        // --- ÇİZİM AŞAMASI (DRAW) ---
         BeginDrawing();
             ClearBackground((Color){ 10, 10, 25, 255 }); 
             
@@ -182,13 +193,16 @@ int main() {
             }
             else if (currentScreen == SCREEN_GAMEPLAY) {
                 
-                // --- 1. ARAYÜZ (UI) ÇİZİMLERİ (Senin Figma Tasarımın) ---
-                DrawGameplayUI(score, currentLevel, highest_score, lives, heartIcon);
                 DrawBackground(background_1);
-                // --- 2. OYUN ALANI ÇİZİMLERİ ---
+
                 DrawPlayer(&gemi); 
-                DrawEnemies(ordumuz);
+                DrawUfo(&ufo,enemySpriteSheet);
+                DrawEnemies(ordumuz, enemySpriteSheet, currentFrame);
                 DrawBullet(&mermi); 
+
+                DrawRectangle(0, 0, LEFT_BOUND, SCREEN_HEIGHT, (Color){ 10, 10, 25, 255 }); 
+                DrawRectangle(RIGHT_BOUND, 0, SCREEN_WIDTH - RIGHT_BOUND, SCREEN_HEIGHT, (Color){ 10, 10, 25, 255 });
+                DrawGameplayUI(score, currentLevel, highest_score, lives, heartIcon);
 
                 // Pause ve Game Over ekranları...
                 if (paused) {
@@ -224,6 +238,7 @@ int main() {
     UnloadTexture(gemi.gameShip);
     UnloadTexture(heartIcon);
     UnloadTexture(background_1);
+    UnloadTexture(enemySpriteSheet);
 
     CloseWindow();
     return 0;
