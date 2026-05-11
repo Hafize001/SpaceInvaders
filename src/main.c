@@ -2,8 +2,9 @@
 #include <stdio.h>
 #include "player.h" 
 #include "common.h"
-#include "enemy.h"   
-#include "bullet.h"  // GÜNCELLENİCEK
+#include "enemy.h" 
+#include "game.h"  
+#include "bullet.h"  
 #include "gamestate.h" 
 #include "ui.h" 
 
@@ -51,8 +52,16 @@ int main() {
     Ufo ufo;
     InitUfo(&ufo);
 
-    Bullet mermi;                           // ŞİMDİLİK 
-    InitBullet(&mermi);                     // ŞİMDİLİK 
+    Bullet bullets[MAX_BULLETS]; // Yeni çoklu mermi dizimiz
+    InitBullets(bullets);
+
+    EnemyBullet eBullets[MAX_ENEMY_BULLETS]; 
+    InitEnemyBullets(eBullets);
+
+   // Merminin ekranda kaplamasını istediğin gerçek boyut (16x16 piksel asset'ten kestim, 3 kat büyüteyim)
+    // Başlangıç boyutunu küçük tutuyoruz. Örneğin 16x16 lık asset'i 1.5 kat büyüterek yollayalım.
+    Vector2 mermiBoyutu = { 16.0f * 1.5f, 16.0f * 1.5f };
+    float mermiHizi = 500.0f; // Saniyede 500 piksel git
 
     
 
@@ -80,21 +89,25 @@ int main() {
                     paused = false; // Menüye dönerken pause durumunu temizle
                 }
 
-                if (paused || game_over || victory) {
-                    // Hızlı Tuşlar
-                    if (IsKeyPressed(KEY_R)) { // R tuşu ile direkt restart
-                        InitPlayer(&gemi);
-                        InitEnemies(ordumuz, currentLevel);
-                        InitBullet(&mermi);
+                if (game_over) {
+                    if (IsKeyPressed(KEY_R)) { // R: Tamamen Sıfırla
+                        currentLevel = 1;
+                        lives = 3;
                         score = 0;
+                        ResetArena(&gemi, ordumuz, bullets, eBullets, &ufo, currentLevel);
                         game_over = false;
-                        victory = false;
-                        paused = false;
                     }
-                    if (IsKeyPressed(KEY_Q)) return 0; // Q tuşu ile direkt çıkış
-                }
-
-                if (paused) {
+                    if (IsKeyPressed(KEY_Q)) return 0; 
+                } 
+                else if (victory) {
+                    if (IsKeyPressed(KEY_ENTER)) { // ENTER: Sonraki Level'a geç!
+                        currentLevel++; // Leveli 1 artır
+                        ResetArena(&gemi, ordumuz, bullets, eBullets, &ufo, currentLevel);
+                        victory = false;
+                    }
+                    if (IsKeyPressed(KEY_Q)) return 0; 
+                } 
+                else if (paused) {
                     // Ok tuşları ile menüde gezinme
                     if (IsKeyPressed(KEY_DOWN)) menuSelection = (menuSelection + 1) % 3;
                     if (IsKeyPressed(KEY_UP)) menuSelection = (menuSelection - 1 + 3) % 3;
@@ -103,70 +116,49 @@ int main() {
                     if (IsKeyPressed(KEY_ENTER)) {
                         if (menuSelection == 0) paused = false;
                         else if (menuSelection == 1) {
-                            InitPlayer(&gemi);
-                            InitEnemies(ordumuz, currentLevel);
-                            InitBullet(&mermi);
+                            currentLevel = 1;
+                            lives = 3;
                             score = 0;
-                            game_over = false;
-                            victory = false;
+                            ResetArena(&gemi, ordumuz, bullets, eBullets, &ufo, currentLevel);
                             paused = false;
                         }
                         else if (menuSelection == 2) {
-                            currentScreen = SCREEN_MENU; // Ana menüye dön
+                            currentScreen = SCREEN_MENU;
                             paused = false;
                         }
                     }
                 }
 
                 if (!paused && !game_over && !victory) {
-                    float dt = GetFrameTime(); 
-                    
                     UpdatePlayer(&gemi); 
                     UpdateEnemies(ordumuz, &animTimer, &currentFrame);
-                    UpdateUfo(&ufo,GetFrameTime());
+                    UpdateUfo(&ufo, GetFrameTime());
 
-                    // --- ATEŞ ETME KONTROLÜ ---
-                    if (IsKeyPressed(KEY_SPACE) && !mermi.active) {
-                        mermi.active = true;
-                        mermi.position = (Vector2){ gemi.position.x + 17, gemi.position.y };
+                    if (IsKeyPressed(KEY_SPACE)) { 
+                         ShootBullet(bullets, gemi.position, gemi.size, mermiBoyutu, mermiHizi);
                     }
 
-                    // Merminin hareketini güncelle
-                    UpdateBullet(&mermi, dt);
+                    UpdateBullets(bullets, ordumuz, &score, &lives, &ufo);
+                    if (score > highest_score) highest_score = score;
 
-                    // --- ÇARPIŞMA KONTROLÜ (MERMİ DÜŞMANI VURDU MU?) ---
-                    if (mermi.active) {
-                        for (int i = 0; i < ENEMY_ROWS; i++) {
-                            for (int j = 0; j < ENEMY_COLS; j++) {
-                                if (ordumuz[i][j].active && CheckCollisionRecs(
-                                    (Rectangle){ mermi.position.x, mermi.position.y, 5, 15 }, 
-                                    (Rectangle){ ordumuz[i][j].position.x, ordumuz[i][j].position.y, ordumuz[i][j].size.x, ordumuz[i][j].size.y })) 
-                                {
-                                    ordumuz[i][j].active = false; 
-                                    mermi.active = false;        
-                                    score += 100;                
-                                    break; 
-                                }
-                            }
+                    // --- YENİ: DÜŞMAN MERMİLERİ VE HASAR KONTROLÜ ---
+                    bool playerHitByBullet = UpdateEnemyBullets(eBullets, ordumuz, &gemi);
+                    bool enemyReachedUs = CheckEnemyReachedPlayer(ordumuz, &gemi);
+
+                    if (playerHitByBullet || enemyReachedUs) {
+                        lives--; // 1 Can Gitti
+                        
+                        if (lives <= 0) {
+                            game_over = true; // Can bitti, game over
+                        } else {
+                            // Can varsa sadece sahneyi sıfırla (Level ve Skor korunur)
+                            ResetArena(&gemi, ordumuz, bullets, eBullets, &ufo, currentLevel);
                         }
                     }
 
-                    // --- ZAFER KONTROLÜ ---
-                    int activeEnemies = 0;
-                    for (int i = 0; i < ENEMY_ROWS; i++) {
-                        for (int j = 0; j < ENEMY_COLS; j++) {
-                            if (ordumuz[i][j].active) activeEnemies++;
-                        }
-                    }
-                    if (activeEnemies == 0) victory = true;
-
-                    // --- OYUN BİTİŞ KONTROLÜ ---
-                    for (int i = 0; i < ENEMY_ROWS; i++) {
-                        for (int j = 0; j < ENEMY_COLS; j++) {
-                            if (ordumuz[i][j].active && ordumuz[i][j].position.y + ordumuz[i][j].size.y >= gemi.position.y) {
-                                game_over = true;
-                            }
-                        }
+                    // --- YENİ: ZAFER KONTROLÜ ---
+                    if (CheckVictory(ordumuz)) {
+                        victory = true;
                     }
                 }
                 break;
@@ -198,11 +190,14 @@ int main() {
                 DrawPlayer(&gemi); 
                 DrawUfo(&ufo,enemySpriteSheet);
                 DrawEnemies(ordumuz, enemySpriteSheet, currentFrame);
-                DrawBullet(&mermi); 
+                DrawEnemyBullets(eBullets, enemySpriteSheet);        
 
                 DrawRectangle(0, 0, LEFT_BOUND, SCREEN_HEIGHT, (Color){ 10, 10, 25, 255 }); 
                 DrawRectangle(RIGHT_BOUND, 0, SCREEN_WIDTH - RIGHT_BOUND, SCREEN_HEIGHT, (Color){ 10, 10, 25, 255 });
                 DrawGameplayUI(score, currentLevel, highest_score, lives, heartIcon);
+
+                // Artık çizim yaparken resmi gönderiyoruz
+                DrawBullets(bullets, enemySpriteSheet);
 
                 // Pause ve Game Over ekranları...
                 if (paused) {
@@ -225,10 +220,13 @@ int main() {
                 } 
                 else if (victory) {
                     DrawRectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, (Color){ 0, 0, 0, 150 });
-                    const char* win_text = "VICTORY!";
-                    DrawText(win_text, (SCREEN_WIDTH - MeasureText(win_text, 40)) / 2, SCREEN_HEIGHT / 2 - 20, 40, LIME);
-                    DrawText("Press R to Play Again or M for Menu", SCREEN_WIDTH/2 - 150, SCREEN_HEIGHT/2 + 40, 20, RAYWHITE);
-                } 
+                    const char* win_text = "LEVEL CLEARED!"; // Yazıyı değiştirdik
+                    DrawText(win_text, (SCREEN_WIDTH - MeasureText(win_text, 40)) / 2, SCREEN_HEIGHT / 2 - 40, 40, LIME);
+                    
+                    // R yerine ENTER ile geçiş yapıyoruz
+                    DrawText("Press ENTER for Next Level", SCREEN_WIDTH/2 - 140, SCREEN_HEIGHT/2 + 20, 20, RAYWHITE);
+                    DrawText("Press M for Main Menu", SCREEN_WIDTH/2 - 110, SCREEN_HEIGHT/2 + 60, 20, GRAY);
+                }
             }
                 
         EndDrawing(); 
@@ -238,6 +236,7 @@ int main() {
     UnloadTexture(gemi.gameShip);
     UnloadTexture(heartIcon);
     UnloadTexture(background_1);
+    UnloadTexture(background_2);
     UnloadTexture(enemySpriteSheet);
 
     CloseWindow();
