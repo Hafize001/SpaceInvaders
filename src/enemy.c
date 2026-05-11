@@ -1,14 +1,11 @@
 #include "enemy.h"
 #include "common.h"
 
-// 1: Sağa doğru, -1: Sola doğru
 static int armadaDir = 1; 
-// Saniyede kaç piksel gidecekler?
 static float armadaSpeedX = 80.0f;
 
 void InitEnemies(Enemy enemies[ENEMY_ROWS][ENEMY_COLS], int currentLevel) {
-    // Ordunun ekrandaki başlangıç noktası ve aralarındaki boşluklar
-    // (Bu sayıları oyun ekranının ortasına tam oturacak şekilde kendin değiştirebilirsin)
+    
     float startX = LEFT_BOUND + 80.0f; 
     float startY = SCREEN_HEIGHT * 0.15F; 
     float spacingX = 120.0f; 
@@ -21,13 +18,10 @@ void InitEnemies(Enemy enemies[ENEMY_ROWS][ENEMY_COLS], int currentLevel) {
             enemies[i][j].size = (Vector2){ 64.0f, 64.0f }; 
             enemies[i][j].active = true;
 
-            // --- LEVEL VE SATIR MANTIĞI ---
-            // İleride 'if (currentLevel == 2)' gibi şartlar ekleyerek ordunun şeklini tamamen değiştirebilirsin!
-            // Şimdilik klasik Space Invaders gibi dizelim:
             if (i == 0) {
-                enemies[i][j].type = 4; // En üst satır (Örn: Sprite sheet'teki 4. sıradaki uzaylı)
+                enemies[i][j].type = 4; // En üst satır uzaylılar
             } else if (i == 1) {
-                enemies[i][j].type = 5; // Orta satırlar (Örn: 2. sıradaki uzaylı)
+                enemies[i][j].type = 5; // Orta satırlar 
             } else if (i == 2){
                 enemies[i][j].type = 4; // En alt satırlar
             }
@@ -40,34 +34,30 @@ void InitEnemies(Enemy enemies[ENEMY_ROWS][ENEMY_COLS], int currentLevel) {
 void UpdateEnemies(Enemy enemies[ENEMY_ROWS][ENEMY_COLS], float *animTimer, int *currentFrame) {
     float dt = GetFrameTime(); // Oyunun çalışma hızından bağımsız sabit hareket için
 
-    // --- 1. ANİMASYON (Kolları Açıp Kapatma) ---
+    // Kolları Açıp Kapatma
     *animTimer += dt;
     if (*animTimer >= 0.5f) {
         *animTimer = 0.0f;
         *currentFrame = (*currentFrame == 0) ? 1 : 0; 
     }
-    // --- 2. DUVARA ÇARPMA KONTROLÜ ---
+    
     bool hitWall = false;
 
     for (int i = 0; i < ENEMY_ROWS; i++) {
         for (int j = 0; j < ENEMY_COLS; j++) {
-            if (enemies[i][j].active) { // Sadece yaşayan düşmanların çarpmasını umursuyoruz
-                // Sağa çarpma
+            if (enemies[i][j].active) { 
                 if (armadaDir == 1 && enemies[i][j].position.x + enemies[i][j].size.x >= RIGHT_BOUND) {
                     hitWall = true;
-                }
-                // Sola çarpma
-                else if (armadaDir == -1 && enemies[i][j].position.x <= LEFT_BOUND) {
+                }else if (armadaDir == -1 && enemies[i][j].position.x <= LEFT_BOUND) {
                     hitWall = true;
                 }
             }
         }
     }
 
-    // --- 3. DUVARA ÇARPTIYSAN AŞAĞI İN VE TERS YÖNE GİT ---
     if (hitWall) {
         armadaDir *= -1;         // Yönü tam tersine çevir
-        armadaSpeedX += 3.0f;   // KLASİK HİLE: Her duvara çarptıklarında biraz hızlanırlar!
+        armadaSpeedX += 3.0f;   
 
         for (int i = 0; i < ENEMY_ROWS; i++) {
             for (int j = 0; j < ENEMY_COLS; j++) {
@@ -136,10 +126,7 @@ void UpdateUfo(Ufo *ufo, float dt) {
             }
         }
     } else {
-        // 2. UFO AKTİFSE: Hızlıca hareket ettir
         ufo->position.x += ufo->speed * ufo->direction * dt;
-
-        // 3. EKRANDAN TAMAMEN ÇIKTIYSA: Yok et ve sayacı yeniden başlat
         if (ufo->direction == 1 && ufo->position.x > RIGHT_BOUND) {
             ufo->active = false;
         } else if (ufo->direction == -1 && ufo->position.x + ufo->size.x < LEFT_BOUND) {

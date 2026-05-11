@@ -16,7 +16,7 @@ typedef struct Enemy {
     int type;      
 } Enemy;
 
-// Fonksiyon Prototipleri
+
 void InitEnemies(Enemy enemies[ENEMY_ROWS][ENEMY_COLS], int currentLevel);
 void UpdateEnemies(Enemy enemies[ENEMY_ROWS][ENEMY_COLS], float *animTimer, int *currentFrame);
 void DrawEnemies(Enemy enemies[ENEMY_ROWS][ENEMY_COLS], Texture2D spriteSheet, int currentFrame);
@@ -25,13 +25,12 @@ void DrawEnemies(Enemy enemies[ENEMY_ROWS][ENEMY_COLS], Texture2D spriteSheet, i
 typedef struct Ufo {
     Vector2 position;
     Vector2 size;
-    bool active;     // Ekranda mı?
-    int direction;   // 1 (Sağa) veya -1 (Sola)
-    float speed;     // Ordudan daha hızlı olacak
-    float timer;     // Tekrar çıkması için geri sayım sayacı
+    bool active;     
+    int direction;   
+    float speed;     
+    float timer;     
 } Ufo;
 
-// UFO Fonksiyonları
 void InitUfo(Ufo *ufo);
 void UpdateUfo(Ufo *ufo, float dt);
 void DrawUfo(Ufo *ufo, Texture2D spriteSheet);
