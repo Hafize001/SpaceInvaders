@@ -5,6 +5,7 @@ void InitPlayer(Player *player) {
     // Büyük harfli olanları kullanıyoruz çünkü common.h'de öyle tanımladık
     player->position = (Vector2){ SCREEN_WIDTH / 2, 0.9f * SCREEN_HEIGHT};
     player->speed = (Vector2){ PLAYER_SPEED, 0 };
+    player->size = (Vector2){ 128.0f, 128.0f };
     player->lives = PLAYER_LIVES;
     player->gameShip = LoadTexture("../assets/HeartShip_Thurst_Foward.png");
 }

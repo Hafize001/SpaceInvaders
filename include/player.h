@@ -7,6 +7,7 @@
 typedef struct Player {
     Vector2 position;
     Vector2 speed;
+    Vector2 size;
     int lives;
     Texture2D gameShip;
 } Player;
