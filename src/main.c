@@ -18,13 +18,13 @@ int main() {
     SetTargetFPS(60);
 
     // --- GÖRSELLERİ HAFIZAYA YÜKLE ---
-    Image spriteSheet = LoadImage("./assets/pico8_invaders_sprites_LARGE.png"); 
+    Image spriteSheet = LoadImage("../assets/pico8_invaders_sprites_LARGE.png"); 
     ImageColorReplace(&spriteSheet, BLACK, BLANK); 
     Texture2D enemySpriteSheet = LoadTextureFromImage(spriteSheet); 
     UnloadImage(spriteSheet); 
-    Texture2D heartIcon = LoadTexture("./assets/Heart_Pump.png");
-    Texture2D background_1 = LoadTexture("./assets/Space_01-Sheet.png");
-    Texture2D background_2 = LoadTexture("./assets/Space_02-Sheet.png");
+    Texture2D heartIcon = LoadTexture("../assets/Heart_Pump.png");
+    Texture2D background_1 = LoadTexture("../assets/Space_01-Sheet.png");
+    Texture2D background_2 = LoadTexture("../assets/Space_02-Sheet.png");
     
     int score = 0;  
     int highest_score = 0;    
