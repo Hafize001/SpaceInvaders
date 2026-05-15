@@ -7,7 +7,7 @@ void InitPlayer(Player *player) {
     player->speed = (Vector2){ PLAYER_SPEED, 0 };
     player->size = (Vector2){ 128.0f, 128.0f };
     player->lives = PLAYER_LIVES;
-    player->gameShip = LoadTexture("../assets/HeartShip_Thurst_Foward.png");
+    player->gameShip = LoadTexture("./assets/HeartShip_Thurst_Foward.png");
 }
 
 void UpdatePlayer(Player *player) {
