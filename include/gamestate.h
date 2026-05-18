@@ -3,6 +3,7 @@
 
 typedef enum GameScreen {
     SCREEN_MENU = 0,
+    SCREEN_TRANSITION,
     SCREEN_GAMEPLAY,
     SCREEN_GAMEOVER,
     SCREEN_VICTORY

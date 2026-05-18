@@ -1,12 +1,14 @@
 #include "raylib.h"
 #include <stdio.h>
+#include <math.h>
 #include "player.h" 
 #include "common.h"
 #include "enemy.h" 
 #include "game.h"  
 #include "bullet.h"  
 #include "gamestate.h" 
-#include "ui.h" 
+#include "menu.h"
+#include "ui.h"
 
 int main() {
     
@@ -18,13 +20,27 @@ int main() {
     SetTargetFPS(60);
 
     // --- GÖRSELLERİ HAFIZAYA YÜKLE ---
-    Image spriteSheet = LoadImage("./assets/pico8_invaders_sprites_LARGE.png"); 
+    Image spriteSheet = LoadImage("../assets/pico8_invaders_sprites_LARGE.png"); 
     ImageColorReplace(&spriteSheet, BLACK, BLANK); 
     Texture2D enemySpriteSheet = LoadTextureFromImage(spriteSheet); 
     UnloadImage(spriteSheet); 
-    Texture2D heartIcon = LoadTexture("./assets/Heart_Pump.png");
-    Texture2D background_1 = LoadTexture("./assets/Space_01-Sheet.png");
-    Texture2D background_2 = LoadTexture("./assets/Space_02-Sheet.png");
+
+    Image titleImage = LoadImage("../assets/title.png"); 
+    ImageColorReplace(&titleImage, BLACK, BLANK); 
+    Texture2D cleanTitle = LoadTextureFromImage(titleImage);
+    UnloadImage(titleImage);
+
+    Texture2D heartIcon = LoadTexture("../assets/Heart_Pump.png");
+    Texture2D background_1 = LoadTexture("../assets/Space_01-Sheet.png");
+    Texture2D background_2 = LoadTexture("../assets/Space_02-Sheet.png");
+    Texture2D gameShip = LoadTexture("../assets/HeartShip_Thurst_Foward.png");
+
+    Menu_Assets menuVisuals;
+    menuVisuals.background_2 = background_2; 
+    menuVisuals.spriteSheet = enemySpriteSheet; 
+    menuVisuals.heartIcon = heartIcon;
+    menuVisuals.gameShip = gameShip;
+    menuVisuals.title = cleanTitle;
     
     int score = 0;  
     int highest_score = 0;    
@@ -52,41 +68,83 @@ int main() {
     Ufo ufo;
     InitUfo(&ufo);
 
-    Bullet bullets[MAX_BULLETS]; // Yeni çoklu mermi dizimiz
+    Bullet bullets[MAX_BULLETS]; 
     InitBullets(bullets);
 
     EnemyBullet eBullets[MAX_ENEMY_BULLETS]; 
     InitEnemyBullets(eBullets);
 
-   // Merminin ekranda kaplamasını istediğin gerçek boyut (16x16 piksel asset'ten kestim, 3 kat büyüteyim)
-    // Başlangıç boyutunu küçük tutuyoruz. Örneğin 16x16 lık asset'i 1.5 kat büyüterek yollayalım.
     Vector2 mermiBoyutu = { 16.0f * 1.5f, 16.0f * 1.5f };
     float mermiHizi = 500.0f; // Saniyede 500 piksel git
 
+    float transShipX = 0.0f, transShipY = 0.0f, transShipRot = 0.0f;
+    float animProgress = 0.0f; 
+    float startX = 0.0f, startY = 0.0f;
+    float targetX = 0.0f, targetY = 0.0f;
+    float controlX = 0.0f, controlY = 0.0f;
     
 
     while (!WindowShouldClose()) {
 
-         // --- EKRAN YÖNETİMİ ---
+        static float animProgress = 0.0f; 
+        static float startX, startY;
+        static float targetX, targetY;
+        static float controlX, controlY; 
+
         switch (currentScreen) {
             case SCREEN_MENU:
                 if (IsKeyPressed(KEY_ENTER)) {
-                    currentScreen = SCREEN_GAMEPLAY;
+                    float btnWidth = 64.0f * 5.0f;  
+                    float btnHeight = 24.0f * 5.0f; 
+                    float btnX = SCREEN_WIDTH / 2.0f - btnWidth / 2.0f;
+                    float btnY = SCREEN_HEIGHT / 2.0f;
+
+                    startX = btnX + btnWidth + 70.0f; 
+                    startY = btnY + btnHeight / 2.0f;
+                    
+                    float gemiGercekYukseklik = 32.0f * 4.0f; 
+
+                    targetX = gemi.position.x; 
+                    targetY = gemi.position.y + (gemiGercekYukseklik / 2.0f);
+                    controlX = SCREEN_WIDTH / 2.0f + 500.0f; 
+                    controlY = SCREEN_HEIGHT / 2.0f + 100.0f;
+                    
+                    animProgress = 0.0f; 
+                    currentScreen = SCREEN_TRANSITION;
                 }
                 if (IsKeyPressed(KEY_Q)) return 0; 
                 break;
 
+            case SCREEN_TRANSITION: 
+                float speed = 1.0f / 1.5f; 
+                animProgress += GetFrameTime() * speed;
+
+                if (animProgress >= 1.0f) {
+                    animProgress = 1.0f; 
+                    currentScreen = SCREEN_GAMEPLAY; 
+                }
+
+                float t = animProgress;
+                float u = 1.0f - t;
+                float tt = t * t;
+                float uu = u * u;
+
+                transShipX = uu * startX + 2 * u * t * controlX + tt * targetX;
+                transShipY = uu * startY + 2 * u * t * controlY + tt * targetY;
+
+                transShipRot = 90.0f + (270.0f * t); 
+                break;
+               
             case SCREEN_GAMEPLAY:
-                // Duraklatma ve Menü Kısayolları
+
                 if (IsKeyPressed(KEY_P)) {
                     paused = !paused;
                     menuSelection = 0;
                 }
 
-                // İç oyunda M tuşuna basılırsa direkt ana menüye dön
                 if (IsKeyPressed(KEY_M)) {
                     currentScreen = SCREEN_MENU;
-                    paused = false; // Menüye dönerken pause durumunu temizle
+                    paused = false; 
                 }
 
                 if (game_over) {
@@ -141,47 +199,44 @@ int main() {
                     UpdateBullets(bullets, ordumuz, &score, &lives, &ufo);
                     if (score > highest_score) highest_score = score;
 
-                    // --- YENİ: DÜŞMAN MERMİLERİ VE HASAR KONTROLÜ ---
                     bool playerHitByBullet = UpdateEnemyBullets(eBullets, ordumuz, &gemi);
                     bool enemyReachedUs = CheckEnemyReachedPlayer(ordumuz, &gemi);
 
                     if (playerHitByBullet || enemyReachedUs) {
-                        lives--; // 1 Can Gitti
+                        lives--;
                         
                         if (lives <= 0) {
-                            game_over = true; // Can bitti, game over
+                            game_over = true; 
                         } else {
                             // Can varsa sadece sahneyi sıfırla (Level ve Skor korunur)
                             ResetArena(&gemi, ordumuz, bullets, eBullets, &ufo, currentLevel);
                         }
                     }
 
-                    // --- YENİ: ZAFER KONTROLÜ ---
                     if (CheckVictory(ordumuz)) {
                         victory = true;
                     }
                 }
-                break;
+            case SCREEN_GAMEOVER:
+            case SCREEN_VICTORY:
+            break;
         }
 
         BeginDrawing();
             ClearBackground((Color){ 10, 10, 25, 255 }); 
             
             if (currentScreen == SCREEN_MENU) {
-                DrawRectangleGradientV(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, (Color){10, 10, 25, 255}, BLACK);
-                DrawLineEx((Vector2){0, 150}, (Vector2){SCREEN_WIDTH, 150}, 2, MAGENTA);
-                DrawLineEx((Vector2){0, SCREEN_HEIGHT - 100}, (Vector2){SCREEN_WIDTH, SCREEN_HEIGHT - 100}, 2, MAGENTA);
-
-                DrawText("SPACE INVADERS", SCREEN_WIDTH/2 - 205, 205, 45, DARKPURPLE);
-                DrawText("SPACE INVADERS", SCREEN_WIDTH/2 - 200, 200, 45, MAGENTA);
-
-                Rectangle startBtn = { SCREEN_WIDTH/2 - 150, SCREEN_HEIGHT/2 - 40, 300, 80 };
-                DrawRectangleLinesEx(startBtn, 3, LIME);
-                DrawText("PRESS ENTER", SCREEN_WIDTH/2 - 95, SCREEN_HEIGHT/2 - 25, 30, LIME);
-                DrawText("TO START MISSION", SCREEN_WIDTH/2 - 65, SCREEN_HEIGHT/2 + 10, 15, RAYWHITE);
-
-                DrawText("DEVELOPED BY THE TEAM", SCREEN_WIDTH/2 - 100, SCREEN_HEIGHT - 60, 15, GRAY);
-                DrawText("PRESS [Q] TO EXIT", 20, SCREEN_HEIGHT - 30, 15, DARKGRAY);
+                DrawFlippedMenuScreen(SCREEN_WIDTH, SCREEN_HEIGHT, &menuVisuals, true);
+            }
+            else if (currentScreen == SCREEN_TRANSITION) {
+                
+                DrawFlippedMenuScreen(SCREEN_WIDTH, SCREEN_HEIGHT, &menuVisuals, false);
+                Rectangle gsSource = { 0, 0, 32, 32 }; 
+                float gsScale = 4.0f;
+                Rectangle gsDest = { transShipX, transShipY, gsSource.width * gsScale, gsSource.height * gsScale };
+                Vector2 gsOrigin = { gsDest.width / 2.0f, gsDest.height / 2.0f }; 
+                
+                DrawTexturePro(menuVisuals.gameShip, gsSource, gsDest, gsOrigin, transShipRot, WHITE);
             }
             else if (currentScreen == SCREEN_GAMEPLAY) {
                 
@@ -191,15 +246,12 @@ int main() {
                 DrawUfo(&ufo,enemySpriteSheet);
                 DrawEnemies(ordumuz, enemySpriteSheet, currentFrame);
                 DrawEnemyBullets(eBullets, enemySpriteSheet);        
-
                 DrawRectangle(0, 0, LEFT_BOUND, SCREEN_HEIGHT, (Color){ 10, 10, 25, 255 }); 
                 DrawRectangle(RIGHT_BOUND, 0, SCREEN_WIDTH - RIGHT_BOUND, SCREEN_HEIGHT, (Color){ 10, 10, 25, 255 });
                 DrawGameplayUI(score, currentLevel, highest_score, lives, heartIcon);
 
-                // Artık çizim yaparken resmi gönderiyoruz
                 DrawBullets(bullets, enemySpriteSheet);
 
-                // Pause ve Game Over ekranları...
                 if (paused) {
                     DrawRectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, (Color){ 0, 0, 0, 200 });
                     Rectangle menuBox = { SCREEN_WIDTH/2 - 125, SCREEN_HEIGHT/2 - 100, 250, 200 };
@@ -207,8 +259,6 @@ int main() {
                     DrawRectangleLinesEx(menuBox, 3, MAGENTA); 
 
                     DrawText("PAUSE MENU", SCREEN_WIDTH/2 - 80, SCREEN_HEIGHT/2 - 80, 25, RAYWHITE);
-
-                    // Seçenekler (M tuşu ibaresi eklendi)
                     DrawText(menuSelection == 0 ? "> RESUME" : "  RESUME", SCREEN_WIDTH/2 - 60, SCREEN_HEIGHT/2 - 20, 20, menuSelection == 0 ? LIME : GRAY);
                     DrawText(menuSelection == 1 ? "> RESTART (R)" : "  RESTART (R)", SCREEN_WIDTH/2 - 60, SCREEN_HEIGHT/2 + 20, 20, menuSelection == 1 ? LIME : GRAY);
                     DrawText(menuSelection == 2 ? "> MAIN MENU (M)" : "  MAIN MENU (M)", SCREEN_WIDTH/2 - 60, SCREEN_HEIGHT/2 + 60, 20, menuSelection == 2 ? LIME : GRAY);
@@ -222,8 +272,6 @@ int main() {
                     DrawRectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, (Color){ 0, 0, 0, 150 });
                     const char* win_text = "LEVEL CLEARED!"; // Yazıyı değiştirdik
                     DrawText(win_text, (SCREEN_WIDTH - MeasureText(win_text, 40)) / 2, SCREEN_HEIGHT / 2 - 40, 40, LIME);
-                    
-                    // R yerine ENTER ile geçiş yapıyoruz
                     DrawText("Press ENTER for Next Level", SCREEN_WIDTH/2 - 140, SCREEN_HEIGHT/2 + 20, 20, RAYWHITE);
                     DrawText("Press M for Main Menu", SCREEN_WIDTH/2 - 110, SCREEN_HEIGHT/2 + 60, 20, GRAY);
                 }
@@ -238,7 +286,7 @@ int main() {
     UnloadTexture(background_1);
     UnloadTexture(background_2);
     UnloadTexture(enemySpriteSheet);
-
+    UnloadTexture(cleanTitle);
     CloseWindow();
     return 0;
 }

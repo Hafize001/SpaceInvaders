@@ -7,7 +7,7 @@ void InitPlayer(Player *player) {
     player->speed = (Vector2){ PLAYER_SPEED, 0 };
     player->size = (Vector2){ 128.0f, 128.0f };
     player->lives = PLAYER_LIVES;
-    player->gameShip = LoadTexture("./assets/HeartShip_Thurst_Foward.png");
+    player->gameShip = LoadTexture("../assets/HeartShip_Thurst_Foward.png");
 }
 
 void UpdatePlayer(Player *player) {
@@ -24,19 +24,22 @@ void UpdatePlayer(Player *player) {
 }
 
 void DrawPlayer(Player *player) {
-    
-    float tekGemiGenisligi = (float)(player->gameShip.width) / 4; 
+    float tekGemiGenisligi = (float)(player->gameShip.width) / 4;
     float tekGemiYuksekligi = (float)(player->gameShip.height);
 
     Rectangle makas = { 0, 0, tekGemiGenisligi, tekGemiYuksekligi };
 
-    float buyutmeKati = 4.0f; 
-    Rectangle hedefKutu = { 
-        player->position.x, 
-        player->position.y, 
-        tekGemiGenisligi * buyutmeKati, 
-        tekGemiYuksekligi * buyutmeKati 
+    float buyutmeKati = 4.0f;
+    float gercekGenislik = tekGemiGenisligi * buyutmeKati;
+    float gercekYukseklik = tekGemiYuksekligi * buyutmeKati;
+
+    Rectangle hedefKutu = {
+        player->position.x,
+        player->position.y,
+        gercekGenislik,
+        gercekYukseklik
     };
 
-    DrawTexturePro(player->gameShip, makas, hedefKutu, (Vector2){0, 0}, 0.0f, WHITE);
+    Vector2 merkez = { gercekGenislik / 2.0f, 0.0f };
+    DrawTexturePro(player->gameShip, makas, hedefKutu, merkez, 0.0f, WHITE);
 }
