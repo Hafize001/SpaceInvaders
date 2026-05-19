@@ -1,7 +1,7 @@
 #include "raylib.h"
 #include <stdio.h>
 #include <math.h>
-#include <string.h> // İsim (string) işlemleri için eklendi
+#include <string.h> 
 #include "player.h" 
 #include "common.h"
 #include "enemy.h" 
@@ -69,12 +69,13 @@ void SaveToLeaderboard(const char* name, int newScore) {
 
 int main() {
     
-    // Ekran boyutunu 1920x1080 olarak sabitledim(monitorde yansitmak icin)
+    // Ekran boyutunu 1920x1080 olarak sabitledim
     InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Space Invaders Game");
-
     ToggleFullscreen(); 
-
     SetTargetFPS(60);
+
+    // --- SES MOTORUNU BAŞLAT ---
+    InitAudioDevice();
 
     // --- GÖRSELLERİ HAFIZAYA YÜKLE ---
     Image spriteSheet = LoadImage("../assets/pico8_invaders_sprites_LARGE.png"); 
@@ -91,6 +92,17 @@ int main() {
     Texture2D background_1 = LoadTexture("../assets/Space_01-Sheet.png");
     Texture2D background_2 = LoadTexture("../assets/Space_02-Sheet.png");
     Texture2D gameShip = LoadTexture("../assets/HeartShip_Thurst_Foward.png");
+
+    // --- SES DOSYALARINI YÜKLE ---
+    Music bgMusic = LoadMusicStream("../assets/bg_music.wav"); 
+    Sound laserSound = LoadSound("../assets/laser.wav");
+    Sound ufoExplosionSound = LoadSound("../assets/ufo_explosion.wav");
+    Sound shipHitSound = LoadSound("../assets/ship_hit.wav");
+
+    // Arka plan müziğini döngüye al ve ses seviyesini ayarla (%40 ses)
+    bgMusic.looping = true;
+    SetMusicVolume(bgMusic, 0.4f);
+    PlayMusicStream(bgMusic);
 
     Menu_Assets menuVisuals;
     menuVisuals.background_2 = background_2; 
@@ -134,6 +146,9 @@ int main() {
     Ufo ufo;
     InitUfo(&ufo);
 
+    // Kırmızı hatayı önlemek için döngü dışında doğru isimlendirmeyle başlattık
+    int lastUfoLive = ufo.active;
+
     Bullet bullets[MAX_BULLETS]; 
     InitBullets(bullets);
 
@@ -147,6 +162,9 @@ int main() {
     
 
     while (!WindowShouldClose()) {
+
+        // --- MÜZİK DÖNGÜSÜNÜ GÜNCELLE ---
+        UpdateMusicStream(bgMusic);
 
         static float animProgress = 0.0f; 
         static float startX, startY;
@@ -165,7 +183,6 @@ int main() {
                 break;
 
             case SCREEN_NAME_INPUT: {
-                // Klavyeden basılan karakterleri kuyruktan oku ve RAM'e kaydet
                 int key = GetCharPressed();
                 while (key > 0) {
                     if ((key >= 32) && (key <= 125) && (letterCount < 15)) {
@@ -176,14 +193,12 @@ int main() {
                     key = GetCharPressed();
                 }
 
-                // Backspace ile bellekten harf silme mantığı
                 if (IsKeyPressed(KEY_BACKSPACE)) {
                     letterCount--;
                     if (letterCount < 0) letterCount = 0;
                     playerName[letterCount] = '\0';
                 }
 
-                // İsim girilip ENTER'a basılınca senin o meşhur geçiş animasyonun başlasın
                 if (IsKeyPressed(KEY_ENTER)) {
                     if (letterCount == 0) {
                         strcpy(playerName, "PILOT-X");
@@ -205,14 +220,14 @@ int main() {
                     controlY = SCREEN_HEIGHT / 2.0f + 100.0f;
                     
                     animProgress = 0.0f; 
-                    currentScreen = SCREEN_TRANSITION; // İsmi aldık, animasyona uçuyoruz
+                    currentScreen = SCREEN_TRANSITION; 
                 }
                 break;
             }
 
             case SCREEN_LEADERBOARD:
                 if (IsKeyPressed(KEY_M) || IsKeyPressed(KEY_ESCAPE)) {
-                    currentScreen = SCREEN_MENU; // M veya ESC ile ana menüye dön
+                    currentScreen = SCREEN_MENU; 
                 }
                 break;
 
@@ -244,7 +259,7 @@ int main() {
                 }
 
                 if (IsKeyPressed(KEY_M)) {
-                    SaveToLeaderboard(playerName, score); // Çıkarken skoru dosyaya yaz
+                    SaveToLeaderboard(playerName, score); 
                     currentScreen = SCREEN_MENU;
                     paused = false; 
                 }
@@ -281,7 +296,7 @@ int main() {
                             paused = false;
                         }
                         else if (menuSelection == 2) {
-                            SaveToLeaderboard(playerName, score); // Menüye dönerken kaydet
+                            SaveToLeaderboard(playerName, score); 
                             currentScreen = SCREEN_MENU;
                             paused = false;
                         }
@@ -291,10 +306,19 @@ int main() {
                 if (!paused && !game_over && !victory) {
                     UpdatePlayer(&gemi); 
                     UpdateEnemies(ordumuz, &animTimer, &currentFrame);
+                    
+                    lastUfoLive = ufo.active; // Kırmızı yanan yer düzeltildi
                     UpdateUfo(&ufo, GetFrameTime());
 
+                    // --- UFO VURULUNCA PATLAMA SESİ ÇAL ---
+                    if (lastUfoLive && !ufo.active) {
+                        PlaySound(ufoExplosionSound);
+                    }
+
+                    // --- MERMİ ATILINCA SES ÇAL ---
                     if (IsKeyPressed(KEY_SPACE)) { 
                          ShootBullet(bullets, gemi.position, gemi.size, mermiBoyutu, mermiHizi);
+                         PlaySound(laserSound);
                     }
 
                     UpdateBullets(bullets, ordumuz, &score, &lives, &ufo);
@@ -305,10 +329,11 @@ int main() {
 
                     if ((playerHitByBullet || enemyReachedUs) && gemi.blinkTimer <= 0.0f) {
                         lives--;
+                        PlaySound(shipHitSound);
                         
                         if (lives <= 0) {
                             game_over = true; 
-                            SaveToLeaderboard(playerName, score); // Elendiğinde skoru listeye işle
+                            SaveToLeaderboard(playerName, score); 
                         } else {
                             gemi.position.x = SCREEN_WIDTH / 2.0f; 
                             InitBullets(bullets);
@@ -322,8 +347,7 @@ int main() {
                     }
                 }
                 break;
-            case SCREEN_GAMEOVER:
-            case SCREEN_VICTORY:
+            default:
                 break;
         }
 
@@ -335,21 +359,18 @@ int main() {
                 DrawText("PRESS [S] FOR LEADERBOARD", SCREEN_WIDTH - 360, SCREEN_HEIGHT - 60, 20, GOLD);
             }
             else if (currentScreen == SCREEN_NAME_INPUT) {
-                // Menüyü arkaya basıp üstüne karartma maskesi atıyoruz
                 DrawFlippedMenuScreen(SCREEN_WIDTH, SCREEN_HEIGHT, &menuVisuals, false);
                 DrawRectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, (Color){ 0, 0, 0, 160 });
 
-                // Neon Yeşil Giriş Kutusu Tasarımı
                 Rectangle inputBox = { SCREEN_WIDTH/2 - 250, SCREEN_HEIGHT/2 - 80, 500, 140 };
                 DrawRectangleRec(inputBox, (Color){20, 20, 35, 255});
                 DrawRectangleLinesEx(inputBox, 4, LIME);
 
                 DrawText("ENTER YOUR PILOT NAME:", SCREEN_WIDTH/2 - 190, SCREEN_HEIGHT/2 - 50, 24, RAYWHITE);
-                DrawText(playerName, SCREEN_WIDTH/2 - 220, SCREEN_HEIGHT/2, 32, MAGENTA); // RAM'deki dinamik metin
+                DrawText(playerName, SCREEN_WIDTH/2 - 220, SCREEN_HEIGHT/2, 32, MAGENTA); 
                 DrawText("Press ENTER to Lock In", SCREEN_WIDTH/2 - 110, SCREEN_HEIGHT/2 + 90, 18, GRAY);
             }
             else if (currentScreen == SCREEN_LEADERBOARD) {
-                // Liderlik Tablosu Görsel Çizimi
                 DrawRectangleGradientV(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, (Color){15, 10, 35, 255}, BLACK);
                 
                 DrawText("GALACTIC LEADERBOARD", SCREEN_WIDTH/2 - 260, 120, 40, MAGENTA);
@@ -415,7 +436,14 @@ int main() {
         EndDrawing(); 
     } 
 
-    // --- TEMİZLİK ---
+    // --- SES TEMİZLİĞİ VE KAPANIŞ ---
+    UnloadMusicStream(bgMusic);
+    UnloadSound(laserSound);
+    UnloadSound(ufoExplosionSound);
+    UnloadSound(shipHitSound);
+    CloseAudioDevice();
+
+    // --- GÖRSEL TEMİZLİK ---
     UnloadTexture(gemi.gameShip);
     UnloadTexture(heartIcon);
     UnloadTexture(background_1);
