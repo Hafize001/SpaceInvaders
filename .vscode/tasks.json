@@ -3,14 +3,23 @@
     "tasks": [
         {
             "type": "cppbuild",
-            "label": "C/C++: gcc etkin dosyayı derle",
-            "command": "gcc",
+            "label": "C/C++: Build Space Invaders",
+            "command": "C:\\msys64\\mingw64\\bin\\gcc.exe",
             "args": [
-                "-fcolor-diagnostics",
+                "-fdiagnostics-color=always",
                 "-g",
-                "${workspaceFolder}/*.c",
+                "${workspaceFolder}/src/main.c",
+                "${workspaceFolder}/src/game.c",
+                "${workspaceFolder}/src/player.c",
+                "${workspaceFolder}/src/enemy.c",
+                "${workspaceFolder}/src/bullet.c",
+                "${workspaceFolder}/src/menu.c",
+                "${workspaceFolder}/src/ui.c",
                 "-o",
                 "${workspaceFolder}/bin/spaceinvaders.exe",
+                "-I", "${workspaceFolder}/include",
+                "-I", "C:\\msys64\\mingw64\\include",
+                "-L", "C:\\msys64\\mingw64\\lib",
                 "-lraylib",
                 "-lopengl32",
                 "-lgdi32",
@@ -25,7 +34,8 @@
             "group": {
                 "kind": "build",
                 "isDefault": true
-            }
+            },
+            "detail": "Builds the Space Invaders game with raylib"
         }
     ]
 }
