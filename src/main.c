@@ -1,6 +1,7 @@
 #include "raylib.h"
 #include <stdio.h>
 #include <math.h>
+#include <string.h> // İsim (string) işlemleri için eklendi
 #include "player.h" 
 #include "common.h"
 #include "enemy.h" 
@@ -9,6 +10,62 @@
 #include "gamestate.h" 
 #include "menu.h"
 #include "ui.h"
+
+// --- SKOR TABLOSU VERI YAPISI VE FONKSIYONLARI ---
+typedef struct {
+    char name[16];
+    int score;
+} HighScoreEntry;
+
+// En yüksek 5 skoru dosyadan yükleyen fonksiyon
+void LoadLeaderboard(HighScoreEntry entries[]) {
+    for (int i = 0; i < 5; i++) {
+        strcpy(entries[i].name, "EMPTY");
+        entries[i].score = 0;
+    }
+    FILE *file = fopen("../assets/highscore.txt", "r");
+    if (file != NULL) {
+        for (int i = 0; i < 5; i++) {
+            if (fscanf(file, "%s %d", entries[i].name, &entries[i].score) == EOF) break;
+        }
+        fclose(file);
+    }
+}
+
+// Yeni skoru kontrol edip sıralayarak kaydeden fonksiyon
+void SaveToLeaderboard(const char* name, int newScore) {
+    HighScoreEntry entries[5];
+    LoadLeaderboard(entries);
+
+    char finalName[16];
+    if (strlen(name) == 0) strcpy(finalName, "ANON");
+    else strcpy(finalName, name);
+
+    if (newScore > entries[4].score) {
+        strcpy(entries[4].name, finalName);
+        entries[4].score = newScore;
+
+        // Bubble Sort: Büyükten küçüğe sıralama
+        for (int i = 0; i < 5; i++) {
+            for (int j = i + 1; j < 5; j++) {
+                if (entries[j].score > entries[i].score) {
+                    HighScoreEntry temp = entries[i];
+                    entries[i] = entries[j];
+                    entries[j] = temp;
+                }
+            }
+        }
+
+        // Dosyaya güncel ilk 5'i yazdır
+        FILE *file = fopen("../assets/highscore.txt", "w");
+        if (file != NULL) {
+            for (int i = 0; i < 5; i++) {
+                fprintf(file, "%s %d\n", entries[i].name, entries[i].score);
+            }
+            fclose(file);
+        }
+    }
+}
 
 int main() {
     
@@ -58,6 +115,15 @@ int main() {
     int menuSelection = 0; 
     GameScreen currentScreen = SCREEN_MENU; 
     
+    // --- İSİM GİRİŞ DEĞİŞKENLERİ (BELLEK) ---
+    char playerName[16] = "\0";
+    int letterCount = 0;
+
+    // Başlangıçta en yüksek skoru tablonun en tepesinden çekiyoruz
+    HighScoreEntry tempEntries[5];
+    LoadLeaderboard(tempEntries);
+    highest_score = tempEntries[0].score;
+
     // --- HAZIRLIKLAR ---
     Player gemi;       
     InitPlayer(&gemi);  
@@ -78,10 +144,6 @@ int main() {
     float mermiHizi = 500.0f; // Saniyede 500 piksel git
 
     float transShipX = 0.0f, transShipY = 0.0f, transShipRot = 0.0f;
-    float animProgress = 0.0f; 
-    float startX = 0.0f, startY = 0.0f;
-    float targetX = 0.0f, targetY = 0.0f;
-    float controlX = 0.0f, controlY = 0.0f;
     
 
     while (!WindowShouldClose()) {
@@ -94,6 +156,39 @@ int main() {
         switch (currentScreen) {
             case SCREEN_MENU:
                 if (IsKeyPressed(KEY_ENTER)) {
+                    currentScreen = SCREEN_NAME_INPUT; // Önce isim sorulacak
+                }
+                if (IsKeyPressed(KEY_S)) {
+                    currentScreen = SCREEN_LEADERBOARD; // S ile tablo açılır
+                }
+                if (IsKeyPressed(KEY_Q)) return 0; 
+                break;
+
+            case SCREEN_NAME_INPUT: {
+                // Klavyeden basılan karakterleri kuyruktan oku ve RAM'e kaydet
+                int key = GetCharPressed();
+                while (key > 0) {
+                    if ((key >= 32) && (key <= 125) && (letterCount < 15)) {
+                        playerName[letterCount] = (char)key;
+                        playerName[letterCount + 1] = '\0';
+                        letterCount++;
+                    }
+                    key = GetCharPressed();
+                }
+
+                // Backspace ile bellekten harf silme mantığı
+                if (IsKeyPressed(KEY_BACKSPACE)) {
+                    letterCount--;
+                    if (letterCount < 0) letterCount = 0;
+                    playerName[letterCount] = '\0';
+                }
+
+                // İsim girilip ENTER'a basılınca senin o meşhur geçiş animasyonun başlasın
+                if (IsKeyPressed(KEY_ENTER)) {
+                    if (letterCount == 0) {
+                        strcpy(playerName, "PILOT-X");
+                    }
+
                     float btnWidth = 64.0f * 5.0f;  
                     float btnHeight = 24.0f * 5.0f; 
                     float btnX = SCREEN_WIDTH / 2.0f - btnWidth / 2.0f;
@@ -110,9 +205,15 @@ int main() {
                     controlY = SCREEN_HEIGHT / 2.0f + 100.0f;
                     
                     animProgress = 0.0f; 
-                    currentScreen = SCREEN_TRANSITION;
+                    currentScreen = SCREEN_TRANSITION; // İsmi aldık, animasyona uçuyoruz
                 }
-                if (IsKeyPressed(KEY_Q)) return 0; 
+                break;
+            }
+
+            case SCREEN_LEADERBOARD:
+                if (IsKeyPressed(KEY_M) || IsKeyPressed(KEY_ESCAPE)) {
+                    currentScreen = SCREEN_MENU; // M veya ESC ile ana menüye dön
+                }
                 break;
 
             case SCREEN_TRANSITION: 
@@ -143,12 +244,13 @@ int main() {
                 }
 
                 if (IsKeyPressed(KEY_M)) {
+                    SaveToLeaderboard(playerName, score); // Çıkarken skoru dosyaya yaz
                     currentScreen = SCREEN_MENU;
                     paused = false; 
                 }
 
                 if (game_over) {
-                    if (IsKeyPressed(KEY_R)) { // R: Tamamen Sıfırla
+                    if (IsKeyPressed(KEY_R)) { 
                         currentLevel = 1;
                         lives = 3;
                         score = 0;
@@ -158,19 +260,17 @@ int main() {
                     if (IsKeyPressed(KEY_Q)) return 0; 
                 } 
                 else if (victory) {
-                    if (IsKeyPressed(KEY_ENTER)) { // ENTER: Sonraki Level'a geç!
-                        currentLevel++; // Leveli 1 artır
+                    if (IsKeyPressed(KEY_ENTER)) { 
+                        currentLevel++; 
                         ResetArena(&gemi, ordumuz, bullets, eBullets, &ufo, currentLevel);
                         victory = false;
                     }
                     if (IsKeyPressed(KEY_Q)) return 0; 
                 } 
                 else if (paused) {
-                    // Ok tuşları ile menüde gezinme
                     if (IsKeyPressed(KEY_DOWN)) menuSelection = (menuSelection + 1) % 3;
                     if (IsKeyPressed(KEY_UP)) menuSelection = (menuSelection - 1 + 3) % 3;
 
-                    // Enter ile seçim onaylama
                     if (IsKeyPressed(KEY_ENTER)) {
                         if (menuSelection == 0) paused = false;
                         else if (menuSelection == 1) {
@@ -181,6 +281,7 @@ int main() {
                             paused = false;
                         }
                         else if (menuSelection == 2) {
+                            SaveToLeaderboard(playerName, score); // Menüye dönerken kaydet
                             currentScreen = SCREEN_MENU;
                             paused = false;
                         }
@@ -207,13 +308,11 @@ int main() {
                         
                         if (lives <= 0) {
                             game_over = true; 
+                            SaveToLeaderboard(playerName, score); // Elendiğinde skoru listeye işle
                         } else {
-                            
                             gemi.position.x = SCREEN_WIDTH / 2.0f; 
-                            
                             InitBullets(bullets);
                             InitEnemyBullets(eBullets);
-                           
                             gemi.blinkTimer = 2.0f; 
                         }
                     }
@@ -222,9 +321,10 @@ int main() {
                         victory = true;
                     }
                 }
+                break;
             case SCREEN_GAMEOVER:
             case SCREEN_VICTORY:
-            break;
+                break;
         }
 
         BeginDrawing();
@@ -232,9 +332,40 @@ int main() {
             
             if (currentScreen == SCREEN_MENU) {
                 DrawFlippedMenuScreen(SCREEN_WIDTH, SCREEN_HEIGHT, &menuVisuals, true);
+                DrawText("PRESS [S] FOR LEADERBOARD", SCREEN_WIDTH - 360, SCREEN_HEIGHT - 60, 20, GOLD);
+            }
+            else if (currentScreen == SCREEN_NAME_INPUT) {
+                // Menüyü arkaya basıp üstüne karartma maskesi atıyoruz
+                DrawFlippedMenuScreen(SCREEN_WIDTH, SCREEN_HEIGHT, &menuVisuals, false);
+                DrawRectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, (Color){ 0, 0, 0, 160 });
+
+                // Neon Yeşil Giriş Kutusu Tasarımı
+                Rectangle inputBox = { SCREEN_WIDTH/2 - 250, SCREEN_HEIGHT/2 - 80, 500, 140 };
+                DrawRectangleRec(inputBox, (Color){20, 20, 35, 255});
+                DrawRectangleLinesEx(inputBox, 4, LIME);
+
+                DrawText("ENTER YOUR PILOT NAME:", SCREEN_WIDTH/2 - 190, SCREEN_HEIGHT/2 - 50, 24, RAYWHITE);
+                DrawText(playerName, SCREEN_WIDTH/2 - 220, SCREEN_HEIGHT/2, 32, MAGENTA); // RAM'deki dinamik metin
+                DrawText("Press ENTER to Lock In", SCREEN_WIDTH/2 - 110, SCREEN_HEIGHT/2 + 90, 18, GRAY);
+            }
+            else if (currentScreen == SCREEN_LEADERBOARD) {
+                // Liderlik Tablosu Görsel Çizimi
+                DrawRectangleGradientV(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, (Color){15, 10, 35, 255}, BLACK);
+                
+                DrawText("GALACTIC LEADERBOARD", SCREEN_WIDTH/2 - 260, 120, 40, MAGENTA);
+                DrawLineEx((Vector2){SCREEN_WIDTH/2 - 300, 180}, (Vector2){SCREEN_WIDTH/2 + 300, 180}, 3, LIME);
+
+                HighScoreEntry leaderboard[5];
+                LoadLeaderboard(leaderboard);
+                for (int i = 0; i < 5; i++) {
+                    Color rowColor = (i == 0) ? GOLD : (i == 1) ? SKYBLUE : RAYWHITE;
+                    DrawText(TextFormat("#%d  %-15s", i + 1, leaderboard[i].name), SCREEN_WIDTH/2 - 200, 280 + (i * 75), 30, rowColor);
+                    DrawText(TextFormat("%05d PTS", leaderboard[i].score), SCREEN_WIDTH/2 + 100, 280 + (i * 75), 30, rowColor);
+                }
+
+                DrawText("PRESS [M] TO RETURN TO MAIN MENU", SCREEN_WIDTH/2 - 180, SCREEN_HEIGHT - 120, 18, GRAY);
             }
             else if (currentScreen == SCREEN_TRANSITION) {
-                
                 DrawFlippedMenuScreen(SCREEN_WIDTH, SCREEN_HEIGHT, &menuVisuals, false);
                 Rectangle gsSource = { 0, 0, 32, 32 }; 
                 float gsScale = 4.0f;
@@ -244,7 +375,6 @@ int main() {
                 DrawTexturePro(menuVisuals.gameShip, gsSource, gsDest, gsOrigin, transShipRot, WHITE);
             }
             else if (currentScreen == SCREEN_GAMEPLAY) {
-                
                 DrawBackground(background_1);
 
                 DrawPlayer(&gemi); 
@@ -267,7 +397,7 @@ int main() {
                     DrawText(menuSelection == 0 ? "> RESUME" : "  RESUME", SCREEN_WIDTH/2 - 60, SCREEN_HEIGHT/2 - 20, 20, menuSelection == 0 ? LIME : GRAY);
                     DrawText(menuSelection == 1 ? "> RESTART (R)" : "  RESTART (R)", SCREEN_WIDTH/2 - 60, SCREEN_HEIGHT/2 + 20, 20, menuSelection == 1 ? LIME : GRAY);
                     DrawText(menuSelection == 2 ? "> MAIN MENU (M)" : "  MAIN MENU (M)", SCREEN_WIDTH/2 - 60, SCREEN_HEIGHT/2 + 60, 20, menuSelection == 2 ? LIME : GRAY);
-                }else if (game_over) {
+                } else if (game_over) {
                     DrawRectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, (Color){ 0, 0, 0, 150 });
                     const char* over_text = "GAME OVER";
                     DrawText(over_text, (SCREEN_WIDTH - MeasureText(over_text, 40)) / 2, SCREEN_HEIGHT / 2 - 20, 40, RED);
@@ -275,7 +405,7 @@ int main() {
                 } 
                 else if (victory) {
                     DrawRectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, (Color){ 0, 0, 0, 150 });
-                    const char* win_text = "LEVEL CLEARED!"; // Yazıyı değiştirdik
+                    const char* win_text = "LEVEL CLEARED!"; 
                     DrawText(win_text, (SCREEN_WIDTH - MeasureText(win_text, 40)) / 2, SCREEN_HEIGHT / 2 - 40, 40, LIME);
                     DrawText("Press ENTER for Next Level", SCREEN_WIDTH/2 - 140, SCREEN_HEIGHT/2 + 20, 20, RAYWHITE);
                     DrawText("Press M for Main Menu", SCREEN_WIDTH/2 - 110, SCREEN_HEIGHT/2 + 60, 20, GRAY);
@@ -285,7 +415,7 @@ int main() {
         EndDrawing(); 
     } 
 
-    // --- TEMİZLİK (Ayrılmadan Önce Hafızayı Boşalt) ---
+    // --- TEMİZLİK ---
     UnloadTexture(gemi.gameShip);
     UnloadTexture(heartIcon);
     UnloadTexture(background_1);
