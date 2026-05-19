@@ -11,24 +11,45 @@ void InitEnemies(Enemy enemies[ENEMY_ROWS][ENEMY_COLS], int currentLevel) {
     float spacingX = 120.0f; 
     float spacingY = 100.0f; 
 
+    // Level 1 ise 3 satır, değilse 4 satır uzaylı gelsin!
+    int activeRows = (currentLevel == 1) ? 3 : 4; 
+
     for (int i = 0; i < ENEMY_ROWS; i++) {
         for (int j = 0; j < ENEMY_COLS; j++) {
-            enemies[i][j].position.x = startX + (j * spacingX);
-            enemies[i][j].position.y = startY + (i * spacingY);
-            enemies[i][j].size = (Vector2){ 64.0f, 64.0f }; 
-            enemies[i][j].active = true;
+            
+            // Eğer bu satır bu level'da aktif olması gerekiyorsa:
+            if (i < activeRows) {
+                enemies[i][j].position.x = startX + (j * spacingX);
+                enemies[i][j].position.y = startY + (i * spacingY);
+                enemies[i][j].size = (Vector2){ 64.0f, 64.0f }; 
+                enemies[i][j].active = true;
 
-            if (i == 0) {
-                enemies[i][j].type = 4; // En üst satır uzaylılar
-            } else if (i == 1) {
-                enemies[i][j].type = 5; // Orta satırlar 
-            } else if (i == 2){
-                enemies[i][j].type = 4; // En alt satırlar
+                // --- GÖRSELLERİ AYARLAMA ---
+                if (currentLevel == 1) {
+                    // LEVEL 1: 3 Satırlık Klasik Ordu
+                    if (i == 0) enemies[i][j].type = 4;
+                    else if (i == 1) enemies[i][j].type = 5;
+                    else if (i == 2) enemies[i][j].type = 4;
+                } 
+                else {
+                    // LEVEL 2 VE SONRASI: 4 Satırlık Büyük Ordu!
+                    if (i == 0) enemies[i][j].type = 1;
+                    else if (i == 1) enemies[i][j].type = 2;
+                    else if (i == 2) enemies[i][j].type = 6;
+                    else if (i == 3) enemies[i][j].type = 7; // <--- YENİ EKLENEN 4. SATIR
+                }
+            } 
+            else {
+                // Eğer i değeri activeRows'dan büyükse, o uzaylıları kapalı (görünmez) tut
+                enemies[i][j].active = false; 
             }
         }
     }
+    
     armadaDir = 1;
-    armadaSpeedX = 100.0f;
+    
+    // Level arttıkça hareket hızları artsın
+    armadaSpeedX = 100.0f + ((currentLevel - 1) * 30.0f); 
 }
 
 void UpdateEnemies(Enemy enemies[ENEMY_ROWS][ENEMY_COLS], float *animTimer, int *currentFrame) {

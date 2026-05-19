@@ -13,7 +13,7 @@ void ShootBullet(Bullet bullets[MAX_BULLETS], Vector2 playerPos, Vector2 playerS
             bullets[i].size = bulletSize;
             
             // Tam ortadan ateşleme matematiği
-            bullets[i].pos.x = playerPos.x + (playerSize.x / 2.0f) - (bulletSize.x / 2.0f);
+            bullets[i].pos.x = playerPos.x - (bulletSize.x / 2.0f);
             bullets[i].pos.y = playerPos.y - bulletSize.y;
             
             bullets[i].speed = bulletSpeed;
@@ -71,8 +71,10 @@ void UpdateBullets(Bullet bullets[MAX_BULLETS], Enemy enemies[ENEMY_ROWS][ENEMY_
                     for (int c = 0; c < ENEMY_COLS; c++) {
                         if (enemies[r][c].active) {
                             Rectangle enemyRec = { enemies[r][c].position.x, enemies[r][c].position.y, enemies[r][c].size.x, enemies[r][c].size.y };
+                            // EĞER MERMİ DÜŞMANA ÇARPARSA:
                             if (CheckCollisionRecs(bulletRec, enemyRec)) {
-                                enemies[r][c].active = false;
+                                
+                                enemies[r][c].active = false; 
                                 *score += 10;
                                 
                                 // --- PATLAMA TETİKLEYİCİSİ ---

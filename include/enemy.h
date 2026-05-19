@@ -5,7 +5,7 @@
 #include "common.h"
 
 
-#define ENEMY_ROWS 3
+#define ENEMY_ROWS 4
 #define ENEMY_COLS 8
 
 // Tek bir düşmanın sahip olacağı özellikler
@@ -13,7 +13,8 @@ typedef struct Enemy {
     Vector2 position;
     Vector2 size;
     bool active;   
-    int type;      
+    int type;   
+    int hp;   
 } Enemy;
 
 

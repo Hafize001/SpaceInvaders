@@ -202,14 +202,19 @@ int main() {
                     bool playerHitByBullet = UpdateEnemyBullets(eBullets, ordumuz, &gemi);
                     bool enemyReachedUs = CheckEnemyReachedPlayer(ordumuz, &gemi);
 
-                    if (playerHitByBullet || enemyReachedUs) {
+                    if ((playerHitByBullet || enemyReachedUs) && gemi.blinkTimer <= 0.0f) {
                         lives--;
                         
                         if (lives <= 0) {
                             game_over = true; 
                         } else {
-                            // Can varsa sadece sahneyi sıfırla (Level ve Skor korunur)
-                            ResetArena(&gemi, ordumuz, bullets, eBullets, &ufo, currentLevel);
+                            
+                            gemi.position.x = SCREEN_WIDTH / 2.0f; 
+                            
+                            InitBullets(bullets);
+                            InitEnemyBullets(eBullets);
+                           
+                            gemi.blinkTimer = 2.0f; 
                         }
                     }
 

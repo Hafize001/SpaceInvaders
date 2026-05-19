@@ -28,15 +28,15 @@ void DrawFlippedMenuScreen(int screenWidth, int screenHeight, Menu_Assets *asset
     Rectangle bg5_Dest   = { 0, 0, screenWidth, screenHeight }; 
     DrawTexturePro(assets->background_2, bg5_Source, bg5_Dest, (Vector2){0,0}, 0.0f, WHITE);
     
-    float titleScale = 5.0f; 
+    float titleScale = 1.f; 
     float scaledWidth = assets->title.width * titleScale;
     float titleX = screenWidth / 2.0f - scaledWidth / 2.0f; 
-    float titleY = 200.0f; 
+    float titleY = 100.0f; 
     DrawTextureEx(assets->title, (Vector2){ titleX, titleY }, 0.0f, titleScale, WHITE);
     
     Rectangle btnSource = { 32, 104, 64, 24 }; 
     float btnScale = 5.0f; 
-    Rectangle btnDest = { screenWidth / 2.0f - (btnSource.width * btnScale)/2.0f, screenHeight / 2.0f, btnSource.width * btnScale, btnSource.height * btnScale };
+    Rectangle btnDest = { screenWidth / 2.0f - (btnSource.width * btnScale)/2.0f, screenHeight / 2.0f , btnSource.width * btnScale, btnSource.height * btnScale };
     DrawTexturePro(assets->spriteSheet, btnSource, btnDest, (Vector2){0,0}, 0.0f, WHITE);
 
     const char* startText = "START";

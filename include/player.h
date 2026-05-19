@@ -10,6 +10,7 @@ typedef struct Player {
     Vector2 size;
     int lives;
     Texture2D gameShip;
+    float blinkTimer;
 } Player;
 
 // Fonksiyon tanımları (Prototipler)
