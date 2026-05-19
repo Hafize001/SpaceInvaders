@@ -3,28 +3,29 @@
     "tasks": [
         {
             "type": "cppbuild",
-            "label": "C/C++: clang etkin dosyayı derle",
-            "command": "/usr/bin/clang",
+            "label": "C/C++: gcc etkin dosyayı derle",
+            "command": "gcc",
             "args": [
                 "-fcolor-diagnostics",
-                "-fansi-escape-codes",
                 "-g",
-                "${workspaceFolder}/src/*.c",
+                "${workspaceFolder}/*.c",
                 "-o",
-                "${workspaceFolder}/main",
-                "-I", "/opt/homebrew/include",
-                "-I", "${workspaceFolder}/include",
-                "-L", "/opt/homebrew/lib",
+                "${workspaceFolder}/bin/spaceinvaders.exe",
                 "-lraylib",
-                "-framework", "CoreVideo",
-                "-framework", "IOKit",
-                "-framework", "Cocoa",
-                "-framework", "GLUT",
-                "-framework", "OpenGL"
+                "-lopengl32",
+                "-lgdi32",
+                "-lwinmm"
             ],
-            "options": { "cwd": "${fileDirname}" },
-            "problemMatcher": ["$gcc"],
-            "group": { "kind": "build", "isDefault": true }
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
         }
     ]
 }
