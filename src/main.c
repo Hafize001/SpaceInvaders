@@ -160,7 +160,7 @@ int main() {
 
     float transShipX = 0.0f, transShipY = 0.0f, transShipRot = 0.0f;
     
-
+    HighScoreEntry displayLeaderboard[5];
     while (!WindowShouldClose()) {
 
         // --- MÜZİK DÖNGÜSÜNÜ GÜNCELLE ---
@@ -174,11 +174,19 @@ int main() {
         switch (currentScreen) {
             case SCREEN_MENU:
                 if (IsKeyPressed(KEY_ENTER)) {
+                    currentLevel = 1;
+                    lives = 3;
+                    score = 0;
+                    game_over = false;
+                    victory = false;
+                    ResetArena(&gemi, ordumuz, bullets, eBullets, &ufo, currentLevel);
+                    
                     currentScreen = SCREEN_NAME_INPUT; // Önce isim sorulacak
                 }
                 if (IsKeyPressed(KEY_S)) {
-                    currentScreen = SCREEN_LEADERBOARD; // S ile tablo açılır
-                }
+                LoadLeaderboard(displayLeaderboard); // SADECE EKRANA GİRERKEN 1 KERE OKU!
+                currentScreen = SCREEN_LEADERBOARD; 
+            }
                 if (IsKeyPressed(KEY_Q)) return 0; 
                 break;
 
@@ -259,9 +267,12 @@ int main() {
                 }
 
                 if (IsKeyPressed(KEY_M)) {
-                    SaveToLeaderboard(playerName, score); 
+                    if (!game_over && !victory) {
+                        SaveToLeaderboard(playerName, score); 
+                    }
                     currentScreen = SCREEN_MENU;
                     paused = false; 
+                    game_over = false; 
                 }
 
                 if (game_over) {
@@ -276,12 +287,20 @@ int main() {
                 } 
                 else if (victory) {
                     if (IsKeyPressed(KEY_ENTER)) { 
-                        currentLevel++; 
-                        ResetArena(&gemi, ordumuz, bullets, eBullets, &ufo, currentLevel);
-                        victory = false;
+                        if (currentLevel < 3) {
+                            // Eğer 1. veya 2. bölümde isek sonraki levela geç
+                            currentLevel++; 
+                            ResetArena(&gemi, ordumuz, bullets, eBullets, &ufo, currentLevel);
+                            victory = false;
+                        } else {
+                            // EĞER 3. BÖLÜMÜ BİTİRDİYSEK OYUN KOMPLE BİTER!
+                            SaveToLeaderboard(playerName, score); // Skoru kaydet
+                            currentScreen = SCREEN_MENU;          // Menüye dön
+                            victory = false;                      // Zafer durumunu sıfırla
+                        }
                     }
                     if (IsKeyPressed(KEY_Q)) return 0; 
-                } 
+                }
                 else if (paused) {
                     if (IsKeyPressed(KEY_DOWN)) menuSelection = (menuSelection + 1) % 3;
                     if (IsKeyPressed(KEY_UP)) menuSelection = (menuSelection - 1 + 3) % 3;
@@ -371,21 +390,19 @@ int main() {
                 DrawText("Press ENTER to Lock In", SCREEN_WIDTH/2 - 110, SCREEN_HEIGHT/2 + 90, 18, GRAY);
             }
             else if (currentScreen == SCREEN_LEADERBOARD) {
-                DrawRectangleGradientV(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, (Color){15, 10, 35, 255}, BLACK);
-                
-                DrawText("GALACTIC LEADERBOARD", SCREEN_WIDTH/2 - 260, 120, 40, MAGENTA);
-                DrawLineEx((Vector2){SCREEN_WIDTH/2 - 300, 180}, (Vector2){SCREEN_WIDTH/2 + 300, 180}, 3, LIME);
+            DrawRectangleGradientV(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, (Color){15, 10, 35, 255}, BLACK);
 
-                HighScoreEntry leaderboard[5];
-                LoadLeaderboard(leaderboard);
-                for (int i = 0; i < 5; i++) {
-                    Color rowColor = (i == 0) ? GOLD : (i == 1) ? SKYBLUE : RAYWHITE;
-                    DrawText(TextFormat("#%d  %-15s", i + 1, leaderboard[i].name), SCREEN_WIDTH/2 - 200, 280 + (i * 75), 30, rowColor);
-                    DrawText(TextFormat("%05d PTS", leaderboard[i].score), SCREEN_WIDTH/2 + 100, 280 + (i * 75), 30, rowColor);
-                }
+            DrawText("GALACTIC LEADERBOARD", SCREEN_WIDTH/2 - 260, 120, 40, MAGENTA);
+            DrawLineEx((Vector2){SCREEN_WIDTH/2 - 300, 180}, (Vector2){SCREEN_WIDTH/2 + 300, 180}, 3, LIME);
 
-                DrawText("PRESS [M] TO RETURN TO MAIN MENU", SCREEN_WIDTH/2 - 180, SCREEN_HEIGHT - 120, 18, GRAY);
+            // LoadLeaderboard satırlarını sildik! Artık direkt displayLeaderboard kullanıyoruz.
+            for (int i = 0; i < 5; i++) {
+                Color rowColor = (i == 0) ? GOLD : (i == 1) ? SKYBLUE : RAYWHITE;
+                DrawText(TextFormat("#%d  %-15s", i + 1, displayLeaderboard[i].name), SCREEN_WIDTH/2 - 200, 280 + (i * 75), 30, rowColor);
+                DrawText(TextFormat("%05d PTS", displayLeaderboard[i].score), SCREEN_WIDTH/2 + 100, 280 + (i * 75), 30, rowColor);
             }
+            DrawText("PRESS [M] TO RETURN TO MAIN MENU", SCREEN_WIDTH/2 - 180, SCREEN_HEIGHT - 120, 18, GRAY);
+        }
             else if (currentScreen == SCREEN_TRANSITION) {
                 DrawFlippedMenuScreen(SCREEN_WIDTH, SCREEN_HEIGHT, &menuVisuals, false);
                 Rectangle gsSource = { 0, 0, 32, 32 }; 
@@ -426,10 +443,19 @@ int main() {
                 } 
                 else if (victory) {
                     DrawRectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, (Color){ 0, 0, 0, 150 });
-                    const char* win_text = "LEVEL CLEARED!"; 
-                    DrawText(win_text, (SCREEN_WIDTH - MeasureText(win_text, 40)) / 2, SCREEN_HEIGHT / 2 - 40, 40, LIME);
-                    DrawText("Press ENTER for Next Level", SCREEN_WIDTH/2 - 140, SCREEN_HEIGHT/2 + 20, 20, RAYWHITE);
-                    DrawText("Press M for Main Menu", SCREEN_WIDTH/2 - 110, SCREEN_HEIGHT/2 + 60, 20, GRAY);
+                    
+                    if (currentLevel < 3) {
+                        const char* win_text = "LEVEL CLEARED!"; 
+                        DrawText(win_text, (SCREEN_WIDTH - MeasureText(win_text, 40)) / 2, SCREEN_HEIGHT / 2 - 40, 40, LIME);
+                        DrawText("Press ENTER for Next Level", SCREEN_WIDTH/2 - 140, SCREEN_HEIGHT/2 + 20, 20, RAYWHITE);
+                    } else {
+                        const char* final_text = "GALAXY SAVED!"; 
+                        DrawText(final_text, (SCREEN_WIDTH - MeasureText(final_text, 50)) / 2, SCREEN_HEIGHT / 2 - 50, 50, GOLD);
+                        DrawText("You defeated the alien armada!", SCREEN_WIDTH/2 - 170, SCREEN_HEIGHT/2 + 10, 20, SKYBLUE);
+                        DrawText("Press ENTER to Save Score & Exit", SCREEN_WIDTH/2 - 180, SCREEN_HEIGHT/2 + 50, 20, RAYWHITE);
+                    }
+                    
+                    DrawText("Press M for Main Menu", SCREEN_WIDTH/2 - 110, SCREEN_HEIGHT/2 + 90, 20, GRAY);
                 }
             }
                 
@@ -450,6 +476,7 @@ int main() {
     UnloadTexture(background_2);
     UnloadTexture(enemySpriteSheet);
     UnloadTexture(cleanTitle);
+    UnloadTexture(gameShip);
     CloseWindow();
     return 0;
 }

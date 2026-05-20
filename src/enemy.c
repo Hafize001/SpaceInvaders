@@ -26,19 +26,23 @@ void InitEnemies(Enemy enemies[ENEMY_ROWS][ENEMY_COLS], int currentLevel) {
 
                 // --- GÖRSELLERİ AYARLAMA ---
                 if (currentLevel == 1) {
-                    // LEVEL 1: 3 Satırlık Klasik Ordu
                     if (i == 0) enemies[i][j].type = 4;
                     else if (i == 1) enemies[i][j].type = 5;
                     else if (i == 2) enemies[i][j].type = 4;
                 } 
-                else {
-                    // LEVEL 2 VE SONRASI: 4 Satırlık Büyük Ordu!
+                else if(currentLevel == 2) {
+                    if (i == 0) enemies[i][j].type = 0;
+                    else if (i == 1) enemies[i][j].type = 7;
+                    else if (i == 2) enemies[i][j].type = 6;
+                    else if (i == 3) enemies[i][j].type = 7; 
+                }
+                else if(currentLevel == 3) {
                     if (i == 0) enemies[i][j].type = 1;
                     else if (i == 1) enemies[i][j].type = 2;
-                    else if (i == 2) enemies[i][j].type = 6;
-                    else if (i == 3) enemies[i][j].type = 7; // <--- YENİ EKLENEN 4. SATIR
-                }
-            } 
+                    else if (i == 2) enemies[i][j].type = 3;
+                    else if (i == 3) enemies[i][j].type = 2; 
+                } 
+            } // <--- İŞTE BURADAKİ KAPATMA PARANTEZİ EKSİKTİ!
             else {
                 // Eğer i değeri activeRows'dan büyükse, o uzaylıları kapalı (görünmez) tut
                 enemies[i][j].active = false; 
@@ -53,10 +57,30 @@ void InitEnemies(Enemy enemies[ENEMY_ROWS][ENEMY_COLS], int currentLevel) {
 }
 
 void UpdateEnemies(Enemy enemies[ENEMY_ROWS][ENEMY_COLS], float *animTimer, int *currentFrame) {
-    float dt = GetFrameTime(); // Oyunun çalışma hızından bağımsız sabit hareket için
+    float dt = GetFrameTime(); 
 
-    // Kolları Açıp Kapatma
-    *animTimer += dt;
+    // --- 1. HAYATTA KALAN UZAYLILARI SAY ---
+    int activeCount = 0;
+    for (int i = 0; i < ENEMY_ROWS; i++) {
+        for (int j = 0; j < ENEMY_COLS; j++) {
+            if (enemies[i][j].active) {
+                activeCount++;
+            }
+        }
+    }
+
+    // --- 2. ÇILDIRMA (FRENZY) ÇARPANI BELİRLE ---
+    float frenzyMultiplier = 1.0f; // Normal Hız
+    
+    if (activeCount > 0 && activeCount <= 5) {
+        frenzyMultiplier = 2.5f; // SON 5 UZAYLI! İnanılmaz hız.
+    } 
+    else if (activeCount > 5 && activeCount <= 12) {
+        frenzyMultiplier = 1.5f; // Sayı azaldı, ufak bir panik başladı.
+    }
+
+    // Kolları Açıp Kapatma (Frenzy çarpanı ile animasyon da çıldırır!)
+    *animTimer += (dt * frenzyMultiplier);
     if (*animTimer >= 0.5f) {
         *animTimer = 0.0f;
         *currentFrame = (*currentFrame == 0) ? 1 : 0; 
@@ -64,6 +88,7 @@ void UpdateEnemies(Enemy enemies[ENEMY_ROWS][ENEMY_COLS], float *animTimer, int 
     
     bool hitWall = false;
 
+    // Sınır Çarpışma Kontrolü
     for (int i = 0; i < ENEMY_ROWS; i++) {
         for (int j = 0; j < ENEMY_COLS; j++) {
             if (enemies[i][j].active) { 
@@ -76,8 +101,9 @@ void UpdateEnemies(Enemy enemies[ENEMY_ROWS][ENEMY_COLS], float *animTimer, int 
         }
     }
 
+    // Duvara Çarpınca Aşağı İnme ve Hızlanma
     if (hitWall) {
-        armadaDir *= -1;         // Yönü tam tersine çevir
+        armadaDir *= -1;         
         armadaSpeedX += 3.0f;   
 
         for (int i = 0; i < ENEMY_ROWS; i++) {
@@ -87,9 +113,11 @@ void UpdateEnemies(Enemy enemies[ENEMY_ROWS][ENEMY_COLS], float *animTimer, int 
         }
     }
 
+    // --- 3. HAREKETİ FRENZY ÇARPANIYLA UYGULA ---
     for (int i = 0; i < ENEMY_ROWS; i++) {
         for (int j = 0; j < ENEMY_COLS; j++) {
-            enemies[i][j].position.x += armadaSpeedX * armadaDir * dt;
+            // armadaSpeedX kendi sabit hızı, frenzyMultiplier ise çıldırma katsayısı
+            enemies[i][j].position.x += (armadaSpeedX * frenzyMultiplier) * armadaDir * dt;
         }
     }
 }
