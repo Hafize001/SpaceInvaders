@@ -32,17 +32,6 @@ void LoadLeaderboard(HighScoreEntry entries[]) {
     }
 }
 
-// En iyi oyuncunun adını döndüren fonksiyon
-void GetTopPlayerName(char* topName) {
-    HighScoreEntry entries[5];
-    LoadLeaderboard(entries);
-    if (strcmp(entries[0].name, "EMPTY") != 0) {
-        strcpy(topName, entries[0].name);
-    } else {
-        strcpy(topName, "NO RECORD");
-    }
-}
-
 // Yeni skoru kontrol edip sıralayarak kaydeden fonksiyon
 void SaveToLeaderboard(const char* name, int newScore) {
     HighScoreEntry entries[5];
@@ -80,7 +69,7 @@ void SaveToLeaderboard(const char* name, int newScore) {
 
 int main() {
     
-    // Ekran boyutunu 1920x1080 olarak sabitledim
+    // Ekran boyutunu sabitle ve başlat
     InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Space Invaders Game");
     ToggleFullscreen(); 
     SetTargetFPS(60);
@@ -104,19 +93,15 @@ int main() {
     Texture2D background_2 = LoadTexture("../assets/Space_02-Sheet.png");
     Texture2D gameShip = LoadTexture("../assets/HeartShip_Thurst_Foward.png");
     
-    // --- 3. BÖLÜMÜN SONUNDAKİ ZAFER GÖRSELİNİ PNG OLARAK YÜKLE ---
-    Texture2D galaxySavedScreen = LoadTexture("../assets/galaxysavedekranı.png");    
-    // Texture loading kontrolü
-    if (galaxySavedScreen.id == 0) {
-        printf("UYARI: galaxysavedekrani.png yüklenemedi!\n");
-    }
+    // Zafer ekranı arka planı
+    Texture2D galaxySavedScreen = LoadTexture("../assets/galaxysaved.png");    
+
     // --- SES DOSYALARINI YÜKLE ---
     Music bgMusic = LoadMusicStream("../assets/bg_music.wav"); 
     Sound laserSound = LoadSound("../assets/laser.wav");
     Sound ufoExplosionSound = LoadSound("../assets/ufo_explosion.wav");
     Sound shipHitSound = LoadSound("../assets/ship_hit.wav");
 
-    // Arka plan müziğini döngüye al ve ses seviyesini ayarla (%40 ses)
     bgMusic.looping = true;
     SetMusicVolume(bgMusic, 0.4f);
     PlayMusicStream(bgMusic);
@@ -130,30 +115,26 @@ int main() {
     
     int score = 0;  
     int highest_score = 0;    
-    int currentLevel = 1; // Level sistemi 
-    int lives = 3;        // Can sistemi 
+    int currentLevel = 1; 
+    int lives = 3;        
 
     bool paused = false;    
     bool game_over = false; 
     bool victory = false;   
 
-    // Animasyon için zamanlayıcı ve anlık kare (0 veya 1)
     float animTimer = 0.0f;
     int currentFrame = 0;
 
     int menuSelection = 0; 
     GameScreen currentScreen = SCREEN_MENU; 
     
-    // --- İSİM GİRİŞ DEĞİŞKENLERİ (BELLEK) ---
     char playerName[16] = "\0";
     int letterCount = 0;
 
-    // Başlangıçta en yüksek skoru tablonun en tepesinden çekiyoruz
     HighScoreEntry tempEntries[5];
     LoadLeaderboard(tempEntries);
     highest_score = tempEntries[0].score;
 
-    // --- HAZIRLIKLAR ---
     Player gemi;       
     InitPlayer(&gemi);  
     
@@ -172,14 +153,13 @@ int main() {
     InitEnemyBullets(eBullets);
 
     Vector2 mermiBoyutu = { 16.0f * 1.5f, 16.0f * 1.5f };
-    float mermiHizi = 500.0f; // Saniyede 500 piksel git
+    float mermiHizi = 500.0f; 
 
     float transShipX = 0.0f, transShipY = 0.0f, transShipRot = 0.0f;
     
     HighScoreEntry displayLeaderboard[5];
     while (!WindowShouldClose()) {
 
-        // --- MÜZİK DÖNGÜSÜNÜ GÜNCELLE ---
         UpdateMusicStream(bgMusic);
 
         static float animProgress = 0.0f; 
@@ -189,7 +169,6 @@ int main() {
 
         switch (currentScreen) {
             case SCREEN_MENU:
-                // ENTER veya Konsol A Butonu
                 if (IsKeyPressed(KEY_ENTER) || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_DOWN)) {
                     currentLevel = 1;
                     lives = 3;
@@ -200,12 +179,13 @@ int main() {
                     
                     currentScreen = SCREEN_NAME_INPUT; 
                 }
-                // S veya Konsol X Butonu leaderboard'a gider
-                if (IsKeyPressed(KEY_S) || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_LEFT_FACE_LEFT)) {
+                // S veya X tuşu veya Gamepad X (Sağ yüz sol) butonu ile Leaderboard açma
+                if (IsKeyPressed(KEY_S) || IsKeyPressed(KEY_X) || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_LEFT)) {
                     LoadLeaderboard(displayLeaderboard); 
                     currentScreen = SCREEN_LEADERBOARD; 
                 }
-                if (IsKeyPressed(KEY_Q)) return 0; 
+                // Q tuşu veya Gamepad Y butonu ile çıkış
+                if (IsKeyPressed(KEY_Q) || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_UP)) return 0; 
                 break;
 
             case SCREEN_NAME_INPUT: {
@@ -225,7 +205,6 @@ int main() {
                     playerName[letterCount] = '\0';
                 }
 
-                // ENTER veya Konsol A Butonu name_input'u kitler
                 if (IsKeyPressed(KEY_ENTER) || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_DOWN)) {
                     if (letterCount == 0) {
                         strcpy(playerName, "PILOT-X");
@@ -253,7 +232,6 @@ int main() {
             }
 
             case SCREEN_LEADERBOARD:
-                // M Tuşu, ESC veya Konsol B Butonu menüye döndürür
                 if (IsKeyPressed(KEY_M) || IsKeyPressed(KEY_ESCAPE) || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_RIGHT)) {
                     currentScreen = SCREEN_MENU; 
                 }
@@ -281,16 +259,16 @@ int main() {
                
             case SCREEN_GAMEPLAY:
 
-                // P veya Konsol Menü/Start Butonu oyunu duraklatır
                 if (IsKeyPressed(KEY_P) || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_MIDDLE_RIGHT)) {
                     paused = !paused;
                     menuSelection = 0;
                 }
 
-                // M veya Konsol B Butonu doğrudan çıkış yapar
                 if (IsKeyPressed(KEY_M) || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_RIGHT)) {
                     if (!game_over && !victory) {
                         SaveToLeaderboard(playerName, score); 
+                        LoadLeaderboard(displayLeaderboard);
+                        highest_score = displayLeaderboard[0].score;
                     }
                     currentScreen = SCREEN_MENU;
                     paused = false; 
@@ -299,56 +277,64 @@ int main() {
                 }
 
                 if (game_over) {
-                    // R veya Konsol A Butonu restart atar
                     if (IsKeyPressed(KEY_R) || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_DOWN)) { 
                         currentLevel = 1;
                         lives = 3;
                         score = 0;
-                        ResetArena(&gemi, ordumuz, bullets, eBullets, &ufo, currentLevel);
                         game_over = false;
+                        ResetArena(&gemi, ordumuz, bullets, eBullets, &ufo, currentLevel);
                     }
-                    if (IsKeyPressed(KEY_Q)) return 0; 
+                    if (IsKeyPressed(KEY_M) || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_RIGHT)) {
+                        currentScreen = SCREEN_MENU;
+                        game_over = false;
+                        paused = false;
+                    }
+                    if (IsKeyPressed(KEY_S) || IsKeyPressed(KEY_X) || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_LEFT)) {
+                        LoadLeaderboard(displayLeaderboard);
+                        currentScreen = SCREEN_LEADERBOARD;
+                    }
+                    if (IsKeyPressed(KEY_Q) || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_UP)) return 0; 
                 } 
                 else if (victory) {
-                    // 3. Bölüm sonu ekranı (Galaxy Saved) - özel kontroller
-                    if (currentLevel >= 3) {
-                        // ENTER veya Konsol A Butonu baştan başlama
-                        if (IsKeyPressed(KEY_ENTER) || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_DOWN)) {
+                    if (IsKeyPressed(KEY_ENTER) || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_DOWN)) { 
+                        if (currentLevel < 3) {
+                            currentLevel++; 
+                            ResetArena(&gemi, ordumuz, bullets, eBullets, &ufo, currentLevel);
+                            victory = false;
+                        } else {
                             currentLevel = 1;
                             lives = 3;
                             score = 0;
                             ResetArena(&gemi, ordumuz, bullets, eBullets, &ufo, currentLevel);
                             victory = false;
                         }
-                        // M veya Konsol B Butonu menüye dön
-                        if (IsKeyPressed(KEY_M) || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_RIGHT)) {
-                            SaveToLeaderboard(playerName, score);
-                            currentScreen = SCREEN_MENU;
-                            victory = false;
-                        }
-                        // Q tuşu oyundan çık
-                        if (IsKeyPressed(KEY_Q)) return 0;
-                    } else {
-                        // Diğer level sonları (1 ve 2)
-                        // ENTER veya Konsol A Butonu sonraki level'a
-                        if (IsKeyPressed(KEY_ENTER) || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_DOWN)) {
-                            currentLevel++; 
-                            ResetArena(&gemi, ordumuz, bullets, eBullets, &ufo, currentLevel);
-                            victory = false;
-                        }
-                        // M veya Konsol B Butonu menüye dön
-                        if (IsKeyPressed(KEY_M) || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_RIGHT)) {
-                            SaveToLeaderboard(playerName, score);
-                            currentScreen = SCREEN_MENU;
-                            victory = false;
-                        }
-                        if (IsKeyPressed(KEY_Q)) return 0;
+                    }
+                    if (IsKeyPressed(KEY_M) || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_RIGHT)) { 
+                        SaveToLeaderboard(playerName, score); 
+                        LoadLeaderboard(displayLeaderboard);
+                        highest_score = displayLeaderboard[0].score;
+                        currentScreen = SCREEN_MENU;          
+                        victory = false;                      
+                    }
+                    if (IsKeyPressed(KEY_S) || IsKeyPressed(KEY_X) || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_LEFT)) { 
+                        SaveToLeaderboard(playerName, score);
+                        LoadLeaderboard(displayLeaderboard);
+                        highest_score = displayLeaderboard[0].score;
+                        currentScreen = SCREEN_LEADERBOARD;
+                        victory = false;
+                    }
+                    if (IsKeyPressed(KEY_Q) || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_UP)) {
+                        return 0; 
                     }
                 }
                 else if (paused) {
-                    // Konsol D-PAD (Yön butonları) Pause menüsünde gezinmeyi sağlar
                     if (IsKeyPressed(KEY_DOWN) || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_LEFT_FACE_DOWN)) menuSelection = (menuSelection + 1) % 3;
                     if (IsKeyPressed(KEY_UP) || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_LEFT_FACE_UP)) menuSelection = (menuSelection - 1 + 3) % 3;
+
+                    if (IsKeyPressed(KEY_S) || IsKeyPressed(KEY_X) || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_LEFT)) {
+                        LoadLeaderboard(displayLeaderboard);
+                        currentScreen = SCREEN_LEADERBOARD;
+                    }
 
                     if (IsKeyPressed(KEY_ENTER) || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_DOWN)) {
                         if (menuSelection == 0) paused = false;
@@ -361,6 +347,8 @@ int main() {
                         }
                         else if (menuSelection == 2) {
                             SaveToLeaderboard(playerName, score); 
+                            LoadLeaderboard(displayLeaderboard);
+                            highest_score = displayLeaderboard[0].score;
                             currentScreen = SCREEN_MENU;
                             paused = false;
                         }
@@ -368,8 +356,7 @@ int main() {
                 }
 
                 if (!paused && !game_over && !victory) {
-                    // Geliştirici Geçici Test Hilesi
-                    if (IsKeyPressed(KEY_U)) {
+                    if (IsKeyPressed(KEY_U)) { 
                         victory = true;
                     }
 
@@ -383,7 +370,6 @@ int main() {
                         PlaySound(ufoExplosionSound);
                     }
 
-                    // SPACE veya Konsol A Butonu mermi ateşler
                     if (IsKeyPressed(KEY_SPACE) || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_DOWN)) { 
                          ShootBullet(bullets, gemi.position, gemi.size, mermiBoyutu, mermiHizi);
                          PlaySound(laserSound);
@@ -401,7 +387,9 @@ int main() {
                         
                         if (lives <= 0) {
                             game_over = true; 
-                            SaveToLeaderboard(playerName, score); 
+                            SaveToLeaderboard(playerName, score);
+                            LoadLeaderboard(displayLeaderboard);
+                            highest_score = displayLeaderboard[0].score;
                         } else {
                             gemi.position.x = SCREEN_WIDTH / 2.0f; 
                             InitBullets(bullets);
@@ -462,65 +450,88 @@ int main() {
             }
             else if (currentScreen == SCREEN_GAMEPLAY) {
                 if (victory && currentLevel >= 3) {
-                    // Galaxy Saved Screen - Bitiş Kutlama Ekranı
+                    // Zafer ekranı arka planı çiziliyor
+                    DrawTexture(galaxySavedScreen, 0, 0, WHITE);
                     
-                    // Dinamik arka plan - yıldız efekti ile
-                    DrawRectangleGradientV(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 
-                        (Color){15, 5, 35, 255}, (Color){5, 2, 15, 255});
+                    // Okunabilirliği artırmak için arka plana hafif karartma katmanı çekiyoruz
+                    DrawRectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, (Color){ 0, 0, 0, 110 });
+
+                    // Sol Üst: "BEST SCORE" (Top Pilot yerine parıltılı ve revize alan)
+                    // Dinamik bir renk dalgalanması efekti ekleyelim (Parıltı hissi için)
+                    float pulse = sinf(GetTime() * 4.0f) * 0.5f + 0.5f;
+                    Color glowColor = (Color){ 255, (unsigned char)(150 + pulse * 105), (unsigned char)(50 + pulse * 100), 255 };
+
+                    Rectangle scoreRecBox = { 50, 300, 380, 200 };
+                    DrawRectangleRec(scoreRecBox, (Color){ 15, 10, 30, 220 }); // Kutu içi koyulaştırıldı
+                    DrawRectangleLinesEx(scoreRecBox, 4, glowColor);
                     
-                    // Yıldız efekti
-                    static float starTimer = 0.0f;
-                    starTimer += GetFrameTime();
-                    for (int i = 0; i < 50; i++) {
-                        int starX = (i * 127 + (int)(starTimer * 50)) % SCREEN_WIDTH;
-                        int starY = ((i * 89 + i * i) % SCREEN_HEIGHT);
-                        float starOpacity = 0.3f + 0.2f * sinf(starTimer + i);
-                        DrawCircle(starX, starY, 1.5f, (Color){255, 255, 255, (unsigned char)(starOpacity * 255)});
-                    }
+                    // Yazı Gölgeleri (Shadow Effect) ve Kalınlaştırılmış Metinler
+                    DrawText("BEST SCORE:", scoreRecBox.x + 27, scoreRecBox.y + 32, 26, BLACK);
+                    DrawText("BEST SCORE:", scoreRecBox.x + 25, scoreRecBox.y + 30, 26, glowColor);
                     
-                    // Merkez başlık - GALAXY SAVED
-                    const char* mainTitle = "GALAXY SAVED!";
-                    int titleWidth = MeasureText(mainTitle, 80);
-                    DrawText(mainTitle, SCREEN_WIDTH/2 - titleWidth/2, 100, 80, GOLD);
+                    DrawText(TextFormat("%05d PTS", highest_score), scoreRecBox.x + 27, scoreRecBox.y + 92, 34, BLACK);
+                    DrawText(TextFormat("%05d PTS", highest_score), scoreRecBox.x + 25, scoreRecBox.y + 90, 34, GOLD);
                     
-                    // Parlak çizgi efekti
-                    DrawLineEx((Vector2){SCREEN_WIDTH/2 - 300, 200}, (Vector2){SCREEN_WIDTH/2 + 300, 200}, 4, YELLOW);
+                    DrawText(TextFormat("PILOT: %s", playerName), scoreRecBox.x + 27, scoreRecBox.y + 152, 20, BLACK);
+                    DrawText(TextFormat("PILOT: %s", playerName), scoreRecBox.x + 25, scoreRecBox.y + 150, 20, RAYWHITE);
+
+                    // Sağ Üst: Skor Kutusu
+                    Rectangle scoreBox = { SCREEN_WIDTH - 430, 300, 380, 200 };
+                    DrawRectangleRec(scoreBox, (Color){ 15, 10, 30, 220 });
+                    DrawRectangleLinesEx(scoreBox, 4, LIME);
                     
-                    // En iyi oyuncunun adını sol tarafta
-                    char topPlayerName[16];
-                    GetTopPlayerName(topPlayerName);
+                    DrawText("FINAL SCORE:", scoreBox.x + 27, scoreBox.y + 32, 26, BLACK);
+                    DrawText("FINAL SCORE:", scoreBox.x + 25, scoreBox.y + 30, 26, LIME);
                     
-                    DrawRectangleRounded((Rectangle){50, 300, 350, 200}, 0.1f, 10, (Color){20, 10, 40, 200});
-                    DrawRectangleLinesEx((Rectangle){50, 300, 350, 200}, 3, MAGENTA);
-                    
-                    DrawText("TOP PILOT:", 80, 330, 28, GOLD);
-                    DrawText(topPlayerName, 80, 390, 40, MAGENTA);
-                    
-                    // Oyuncu skoru sağ tarafta
-                    DrawRectangleRounded((Rectangle){SCREEN_WIDTH - 400, 300, 350, 200}, 0.1f, 10, (Color){10, 30, 20, 200});
-                    DrawRectangleLinesEx((Rectangle){SCREEN_WIDTH - 400, 300, 350, 200}, 3, LIME);
-                    
-                    DrawText("FINAL SCORE:", SCREEN_WIDTH - 370, 330, 28, LIME);
-                    DrawText(TextFormat("%05d PTS", score), SCREEN_WIDTH - 370, 390, 40, YELLOW);
-                    
-                    // Ortada tebrik metni
-                    DrawText("CONGRATULATIONS!", SCREEN_WIDTH/2 - 180, 550, 36, (Color){255, 200, 100, 255});
-                    DrawText("You have saved the galaxy!", SCREEN_WIDTH/2 - 170, 610, 28, SKYBLUE);
-                    
-                    // Alt kısımda menü kontrollerini göster
-                    DrawRectangle(0, SCREEN_HEIGHT - 220, SCREEN_WIDTH, 220, (Color){0, 0, 0, 220});
-                    DrawLineEx((Vector2){0, SCREEN_HEIGHT - 220}, (Vector2){SCREEN_WIDTH, SCREEN_HEIGHT - 220}, 3, MAGENTA);
-                    
-                    // Kontrol seçenekleri
-                    DrawText("GAME COMPLETE!", SCREEN_WIDTH/2 - 150, SCREEN_HEIGHT - 180, 32, GOLD);
-                    
-                    DrawText("[ENTER] or [A] Button", SCREEN_WIDTH/2 - 300, SCREEN_HEIGHT - 120, 20, LIME);
-                    DrawText("Restart from Level 1", SCREEN_WIDTH/2 - 220, SCREEN_HEIGHT - 85, 18, GRAY);
-                    
-                    DrawText("[M] or [B] Button", SCREEN_WIDTH/2 + 50, SCREEN_HEIGHT - 120, 20, SKYBLUE);
-                    DrawText("Return to Main Menu", SCREEN_WIDTH/2 + 80, SCREEN_HEIGHT - 85, 18, GRAY);
-                    
-                    DrawText("[Q] to Exit", SCREEN_WIDTH - 300, SCREEN_HEIGHT - 100, 20, RED);
+                    DrawText(TextFormat("%05d PTS", score), scoreBox.x + 27, scoreBox.y + 102, 34, BLACK);
+                    DrawText(TextFormat("%05d PTS", score), scoreBox.x + 25, scoreBox.y + 100, 34, GOLD);
+
+                    // Alt Pembe Ayraç Çizgisi
+                    DrawLineEx((Vector2){ 0, SCREEN_HEIGHT - 220 }, (Vector2){ SCREEN_WIDTH, SCREEN_HEIGHT - 220 }, 5, MAGENTA);
+
+                    // Alt Kontrol Butonları Konumlandırması
+                    float btnY = SCREEN_HEIGHT - 150;
+                    float btnW = 380;
+                    float btnH = 90;
+                    float spacing = 60;
+                    float startX = (SCREEN_WIDTH - (4 * btnW + 3 * spacing)) / 2.0f;
+
+                    // 1. Kutu: ENTER / [A] - RESTART
+                    Rectangle r1 = { startX, btnY, btnW, btnH };
+                    DrawRectangleRec(r1, (Color){ 20, 20, 35, 240 });
+                    DrawRectangleLinesEx(r1, 3, LIME);
+                    DrawRectangleRec((Rectangle){r1.x+5, r1.y+5, 110, btnH-10}, (Color){15, 15, 25, 255});
+                    DrawRectangleLinesEx((Rectangle){r1.x+10, r1.y+10, 100, btnH-20}, 2, LIME);
+                    DrawText("ENTER/[A]", r1.x + 15, r1.y + 33, 16, LIME);
+                    DrawText("RESTART\nFROM LEVEL 1", r1.x + 135, r1.y + 22, 18, LIME);
+
+                    // 2. Kutu: M / [B] - MAIN MENU
+                    Rectangle r2 = { startX + btnW + spacing, btnY, btnW, btnH };
+                    DrawRectangleRec(r2, (Color){ 20, 20, 35, 240 });
+                    DrawRectangleLinesEx(r2, 3, SKYBLUE);
+                    DrawRectangleRec((Rectangle){r2.x+5, r2.y+5, 100, btnH-10}, (Color){15, 15, 25, 255});
+                    DrawRectangleLinesEx((Rectangle){r2.x+10, r2.y+10, 80, btnH-20}, 2, SKYBLUE);
+                    DrawText("M / [B]", r2.x + 20, r2.y + 33, 18, SKYBLUE);
+                    DrawText("RETURN TO\nMAIN MENU", r2.x + 125, r2.y + 22, 18, SKYBLUE);
+
+                    // 3. Kutu: S / [X] - LEADERBOARD
+                    Rectangle r3 = { startX + 2 * (btnW + spacing), btnY, btnW, btnH };
+                    DrawRectangleRec(r3, (Color){ 20, 20, 35, 240 });
+                    DrawRectangleLinesEx(r3, 3, GOLD);
+                    DrawRectangleRec((Rectangle){r3.x+5, r3.y+5, 100, btnH-10}, (Color){15, 15, 25, 255});
+                    DrawRectangleLinesEx((Rectangle){r3.x+10, r3.y+10, 80, btnH-20}, 2, GOLD);
+                    DrawText("S / [X]", r3.x + 22, r3.y + 33, 18, GOLD);
+                    DrawText("VIEW\nLEADERBOARD", r3.x + 125, r3.y + 22, 18, GOLD);
+
+                    // 4. Kutu: Q / [Y] - EXIT TO DESKTOP
+                    Rectangle r4 = { startX + 3 * (btnW + spacing), btnY, btnW, btnH };
+                    DrawRectangleRec(r4, (Color){ 20, 20, 35, 240 });
+                    DrawRectangleLinesEx(r4, 3, RED);
+                    DrawRectangleRec((Rectangle){r4.x+5, r4.y+5, 100, btnH-10}, (Color){15, 15, 25, 255});
+                    DrawRectangleLinesEx((Rectangle){r4.x+10, r4.y+10, 80, btnH-20}, 2, RED);
+                    DrawText("Q / [Y]", r4.x + 18, r4.y + 33, 18, RED);
+                    DrawText("EXIT TO\nDESKTOP", r4.x + 125, r4.y + 22, 18, RED);
+
                 } else {
                     DrawBackground(background_1);
 
@@ -544,16 +555,14 @@ int main() {
                         DrawText(menuSelection == 0 ? "> RESUME" : "  RESUME", SCREEN_WIDTH/2 - 60, SCREEN_HEIGHT/2 - 20, 20, menuSelection == 0 ? LIME : GRAY);
                         DrawText(menuSelection == 1 ? "> RESTART" : "  RESTART", SCREEN_WIDTH/2 - 60, SCREEN_HEIGHT/2 + 20, 20, menuSelection == 1 ? LIME : GRAY);
                         DrawText(menuSelection == 2 ? "> MAIN MENU" : "  MAIN MENU", SCREEN_WIDTH/2 - 60, SCREEN_HEIGHT/2 + 60, 20, menuSelection == 2 ? LIME : GRAY);
-                        
-                        // Gamepad kontrol bilgisi
-                        DrawText("Use UP/DOWN or Gamepad D-PAD to navigate", SCREEN_WIDTH/2 - 180, SCREEN_HEIGHT/2 + 130, 14, GRAY);
-                        DrawText("Press ENTER or [A] Gamepad Button to select", SCREEN_WIDTH/2 - 180, SCREEN_HEIGHT/2 + 155, 14, GRAY);
                     } else if (game_over) {
                         DrawRectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, (Color){ 0, 0, 0, 150 });
                         const char* over_text = "GAME OVER";
                         DrawText(over_text, (SCREEN_WIDTH - MeasureText(over_text, 40)) / 2, SCREEN_HEIGHT / 2 - 20, 40, RED);
                         DrawText("Press R or [A] Gamepad Button to Restart", SCREEN_WIDTH/2 - 200, SCREEN_HEIGHT/2 + 40, 20, RAYWHITE);
                         DrawText("Press M or [B] Gamepad Button for Menu", SCREEN_WIDTH/2 - 200, SCREEN_HEIGHT/2 + 75, 20, RAYWHITE);
+                        DrawText("Press S or [X] Gamepad Button for Leaderboard", SCREEN_WIDTH/2 - 200, SCREEN_HEIGHT/2 + 110, 20, RAYWHITE);
+                        DrawText("Press Q or [Y] Gamepad Button to Exit", SCREEN_WIDTH/2 - 200, SCREEN_HEIGHT/2 + 145, 20, RAYWHITE);
                     } 
                     else if (victory) {
                         DrawRectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, (Color){ 0, 0, 0, 150 });
@@ -561,6 +570,8 @@ int main() {
                         DrawText(win_text, (SCREEN_WIDTH - MeasureText(win_text, 40)) / 2, SCREEN_HEIGHT / 2 - 40, 40, LIME);
                         DrawText("Press ENTER or [A] Gamepad Button for Next Level", SCREEN_WIDTH/2 - 240, SCREEN_HEIGHT/2 + 20, 20, RAYWHITE);
                         DrawText("Press M or [B] Gamepad Button for Main Menu", SCREEN_WIDTH/2 - 230, SCREEN_HEIGHT/2 + 60, 20, GRAY);
+                        DrawText("Press S or [X] Gamepad Button for Leaderboard", SCREEN_WIDTH/2 - 230, SCREEN_HEIGHT/2 + 100, 20, GRAY);
+                        DrawText("Press Q or [Y] Gamepad Button to Exit", SCREEN_WIDTH/2 - 230, SCREEN_HEIGHT/2 + 140, 20, GRAY);
                     }
                 }
             }
@@ -568,22 +579,21 @@ int main() {
         EndDrawing(); 
     } 
 
-    // --- SES TEMİZLİĞİ VE KAPANIŞ ---
+    // --- TEMİZLİK ---
     UnloadMusicStream(bgMusic);
     UnloadSound(laserSound);
     UnloadSound(ufoExplosionSound);
     UnloadSound(shipHitSound);
     CloseAudioDevice();
 
-    // --- GÖRSEL TEMİZLİK ---
     UnloadTexture(galaxySavedScreen); 
-    UnloadTexture(gemi.gameShip);
     UnloadTexture(heartIcon);
     UnloadTexture(background_1);
     UnloadTexture(background_2);
     UnloadTexture(enemySpriteSheet);
     UnloadTexture(cleanTitle);
     UnloadTexture(gameShip);
+
     CloseWindow();
     return 0;
 }
