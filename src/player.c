@@ -1,5 +1,6 @@
 #include "player.h"
-#include "common.h" 
+#include "common.h"
+#include <math.h> 
 
 void InitPlayer(Player *player) {
     player->position = (Vector2){ SCREEN_WIDTH / 2, 0.9f * SCREEN_HEIGHT};
@@ -17,8 +18,19 @@ void UpdatePlayer(Player *player) {
         player->blinkTimer -= GetFrameTime(); 
     }
 
+    // Klavye Kontrolleri
     if (IsKeyDown(KEY_RIGHT)) player->position.x += player->speed.x * GetFrameTime();
     if (IsKeyDown(KEY_LEFT)) player->position.x -= player->speed.x * GetFrameTime();
+
+    // Gamepad D-PAD Kontrolleri
+    if (IsGamepadButtonDown(0, GAMEPAD_BUTTON_LEFT_FACE_RIGHT)) player->position.x += player->speed.x * GetFrameTime();
+    if (IsGamepadButtonDown(0, GAMEPAD_BUTTON_LEFT_FACE_LEFT)) player->position.x -= player->speed.x * GetFrameTime();
+
+    // Gamepad Analog Stick (Sol Stick)
+    float gamepadX = GetGamepadAxisMovement(0, GAMEPAD_AXIS_LEFT_X);
+    if (fabs(gamepadX) > 0.3f) { // Dead zone kontrol
+        player->position.x += gamepadX * player->speed.x * GetFrameTime() * 1.2f;
+    }
 
     if (player->position.x < LEFT_BOUND) player->position.x = LEFT_BOUND;
     if (player->position.x > RIGHT_BOUND - player->gameShip.width) player->position.x = RIGHT_BOUND - player->gameShip.width;
